@@ -14,7 +14,8 @@ export interface Evidence {
 export interface CriterionResult {
   criterion: string;
   status: ReviewStatus;
-  explanation: string;
+  /** Null cuando el modelo no llegó a dar un veredicto para este criterio. */
+  explanation: string | null;
   evidence: Evidence | null;
   /** Por qué no se pudo verificar la cita. Null cuando todo cuadró. */
   verificationNote: string | null;
@@ -23,6 +24,10 @@ export interface CriterionResult {
 export interface ReviewResponse {
   results: CriterionResult[];
   model: string;
+  /** Quién atendió la petición: «API de Claude», o lo que haya en su lugar. */
+  provider: string;
+  /** false si la respuesta no vino de la API de Claude. */
+  officialProvider: boolean;
 }
 
 export const STATUS_LABEL: Record<ReviewStatus, string> = {

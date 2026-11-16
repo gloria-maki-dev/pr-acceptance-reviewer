@@ -1,6 +1,7 @@
 package dev.gloria.pracceptance.review;
 
 import dev.gloria.pracceptance.diff.ParsedDiff;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,8 @@ public class PromptBuilder {
             Eres quien revisa una pull request. Te dan los criterios de aceptación de un ticket y un
             diff ya anotado, y decides si el diff cumple cada criterio.
 
-            El diff llega con una línea por cambio, con esta forma:
+            Cada criterio llega con un identificador (C1, C2, C3...). El diff llega con una línea
+            por cambio, con esta forma:
 
                 ARCHIVO: ruta/del/archivo.tsx
                 [ADDED 20] contenido de la línea 20 del archivo nuevo
@@ -22,7 +24,8 @@ public class PromptBuilder {
 
             Reglas, en orden de importancia:
 
-            1. Para cada criterio devuelve exactamente un veredicto, con uno de estos estados:
+            1. Devuelve un veredicto por cada identificador, sin saltarte ninguno, aunque no tengas
+               nada que decir de él: en ese caso el estado es UNVERIFIED. Los estados son:
                - MET: el diff cumple el criterio, y puedes señalar la línea que lo demuestra.
                - NOT_MET: el diff incumple el criterio, y puedes señalar la línea que lo demuestra.
                - UNVERIFIED: el diff no da contexto suficiente para decidir.
@@ -41,7 +44,7 @@ public class PromptBuilder {
 
             Responde únicamente con un objeto JSON, sin texto alrededor y sin bloque de código:
 
-            {"results":[{"criterionIndex":1,"status":"MET","explanation":"...",
+            {"results":[{"criterionId":"C1","status":"MET","explanation":"...",
               "evidence":{"file":"...","side":"ADDED","lineNumber":1,"snippet":"..."}}]}
 
             «evidence» vale null cuando el estado es UNVERIFIED.
@@ -51,16 +54,26 @@ public class PromptBuilder {
         return SYSTEM_PROMPT;
     }
 
+    /** Los identificadores que se le mandan al modelo, en el orden de los criterios. */
+    public static List<String> criterionIds(int criteriaCount) {
+        List<String> ids = new ArrayList<>(criteriaCount);
+        for (int i = 1; i <= criteriaCount; i++) {
+            ids.add("C" + i);
+        }
+        return List.copyOf(ids);
+    }
+
     public String userPrompt(List<String> criteria, ParsedDiff diff) {
+        List<String> ids = criterionIds(criteria.size());
+
         StringBuilder out = new StringBuilder("CRITERIOS DE ACEPTACIÓN\n\n");
         for (int i = 0; i < criteria.size(); i++) {
-            out.append(i + 1).append(". ").append(criteria.get(i).strip()).append('\n');
+            out.append(ids.get(i)).append(". ").append(criteria.get(i).strip()).append('\n');
         }
         out.append("\nDIFF ANOTADO\n\n").append(diff.toAnnotatedText());
-        out.append("\nDevuelve ")
-                .append(criteria.size())
-                .append(criteria.size() == 1 ? " veredicto" : " veredictos")
-                .append(", uno por criterio, en el JSON acordado.\n");
+        out.append("\nDevuelve un veredicto para cada uno de estos identificadores: ")
+                .append(String.join(", ", ids))
+                .append(".\n");
         return out.toString();
     }
 }

@@ -296,6 +296,15 @@ textarea.field__input--code {
   color: var(--ink-muted);
 }
 
+.output__model--warning {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--unverified);
+  border-radius: 4px;
+  background: var(--unverified-wash);
+  color: #6d4f0f;
+  max-width: 62ch;
+}
+
 /* --- Un criterio ------------------------------------------------------ */
 
 .result {

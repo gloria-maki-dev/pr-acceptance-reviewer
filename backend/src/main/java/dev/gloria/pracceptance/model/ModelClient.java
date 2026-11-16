@@ -12,4 +12,14 @@ public interface ModelClient {
 
     /** Identificador del modelo, para mostrarlo en la pantalla junto al resultado. */
     String modelName();
+
+    /** Quién atendió de verdad la petición: la API de Claude, o lo que sea que haya en su lugar. */
+    default String providerDescription() {
+        return ProviderLabel.OFFICIAL;
+    }
+
+    /** {@code false} si la petición no fue a la API de Claude. */
+    default boolean isOfficialProvider() {
+        return true;
+    }
 }

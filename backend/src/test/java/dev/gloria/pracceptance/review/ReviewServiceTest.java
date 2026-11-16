@@ -52,11 +52,11 @@ class ReviewServiceTest {
     private static final String RESPUESTA_DIFF_CON_FALLO =
             """
             {"results":[
-              {"criterionIndex":1,"status":"MET",
+              {"criterionId":"C1","status":"MET",
                "explanation":"El resumen del carrito ahora muestra «Total estimado».",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
                            "snippet":"<span className=\\"cart-summary__label\\">Total estimado</span>"}},
-              {"criterionIndex":2,"status":"NOT_MET",
+              {"criterionId":"C2","status":"NOT_MET",
                "explanation":"El historial de pedidos también cambia de «Total» a «Total estimado».",
                "evidence":{"file":"src/components/OrderHistory.tsx","side":"ADDED","lineNumber":32,
                            "snippet":"Total estimado: {formatPrice(order.total)}"}}
@@ -66,11 +66,11 @@ class ReviewServiceTest {
     private static final String RESPUESTA_DIFF_CORREGIDO =
             """
             {"results":[
-              {"criterionIndex":1,"status":"MET",
+              {"criterionId":"C1","status":"MET",
                "explanation":"El resumen del carrito ahora muestra «Total estimado».",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
                            "snippet":"Total estimado"}},
-              {"criterionIndex":2,"status":"MET",
+              {"criterionId":"C2","status":"MET",
                "explanation":"El diff solo toca CartSummary.tsx, así que el historial sigue igual.",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"REMOVED","lineNumber":20,
                            "snippet":"<span className=\\"cart-summary__label\\">Total</span>"}}
@@ -107,12 +107,14 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("devuelve el nombre del modelo que revisó")
-    void devuelveElModelo() {
+    @DisplayName("devuelve el modelo y quién atendió de verdad la petición")
+    void devuelveElModeloYElProveedor() {
         ReviewResult result =
                 serviceWith(RESPUESTA_DIFF_CORREGIDO).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
 
         assertThat(result.model()).isEqualTo("modelo-de-prueba");
+        assertThat(result.provider()).isEqualTo("API de Claude");
+        assertThat(result.officialProvider()).isTrue();
     }
 
     @Test
@@ -121,10 +123,10 @@ class ReviewServiceTest {
         String respuesta =
                 """
                 {"results":[
-                  {"criterionIndex":1,"status":"MET","explanation":"Cambiado.",
+                  {"criterionId":"C1","status":"MET","explanation":"Cambiado.",
                    "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":417,
                                "snippet":"Total estimado"}},
-                  {"criterionIndex":2,"status":"MET","explanation":"Nada más cambia.","evidence":null}
+                  {"criterionId":"C2","status":"MET","explanation":"Nada más cambia.","evidence":null}
                 ]}
                 """;
 
@@ -162,7 +164,8 @@ class ReviewServiceTest {
         serviceWith(client).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
 
         assertThat(client.systemPrompt).contains("MET", "NOT_MET", "UNVERIFIED");
-        assertThat(client.userPrompt).contains("1. Cambiar el texto «Total»");
+        assertThat(client.userPrompt).contains("C1. Cambiar el texto «Total»");
+        assertThat(client.userPrompt).contains("C1, C2");
         assertThat(client.userPrompt).contains("ARCHIVO: src/components/CartSummary.tsx");
         assertThat(client.userPrompt).contains("[ADDED 20]");
     }

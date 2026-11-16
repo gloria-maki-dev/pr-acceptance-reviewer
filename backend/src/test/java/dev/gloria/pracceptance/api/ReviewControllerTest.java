@@ -52,11 +52,15 @@ class ReviewControllerTest {
                                 "Cambiado en la línea 1.",
                                 new Evidence("a.tsx", DiffSide.ADDED, 1, "Total estimado"),
                                 null)),
-                        "claude-opus-5-5"));
+                        "claude-opus-5-5",
+                        "API de Claude",
+                        true));
 
         mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.model").value("claude-opus-5-5"))
+                .andExpect(jsonPath("$.provider").value("API de Claude"))
+                .andExpect(jsonPath("$.officialProvider").value(true))
                 .andExpect(jsonPath("$.results[0].status").value("MET"))
                 .andExpect(jsonPath("$.results[0].evidence.file").value("a.tsx"))
                 .andExpect(jsonPath("$.results[0].evidence.side").value("ADDED"))

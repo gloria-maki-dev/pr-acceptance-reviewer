@@ -24,8 +24,10 @@ export function ResultCard({ result, index }: { result: CriterionResult; index: 
 
       {citationRejected ? (
         <p className="result__note">
-          <strong>Sin evidencia que lo sostenga.</strong> {result.verificationNote} No se muestran
-          ni la cita ni la explicación del modelo, porque se apoyaban en ella.
+          <strong>{result.explanation === null ? 'Sin comprobar.' : 'Sin evidencia que lo sostenga.'}</strong>{' '}
+          {result.verificationNote}
+          {result.explanation !== null &&
+            ' No se muestran ni la cita ni la explicación del modelo, porque se apoyaban en ella.'}
         </p>
       ) : (
         <>

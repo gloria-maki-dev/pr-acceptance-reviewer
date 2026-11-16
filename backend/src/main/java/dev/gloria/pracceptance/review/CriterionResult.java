@@ -5,7 +5,7 @@ package dev.gloria.pracceptance.review;
  *
  * @param criterion el criterio de aceptación tal cual lo escribió quien revisa
  * @param status veredicto final, después de comprobar la cita
- * @param explanation la explicación del modelo, que se muestra siempre junto a la cita
+ * @param explanation la explicación del modelo, o {@code null} si no llegó a dar ninguna
  * @param evidence la cita del modelo, o {@code null} si no citó nada
  * @param verificationNote por qué no se pudo verificar la cita, o {@code null} si todo cuadró
  */

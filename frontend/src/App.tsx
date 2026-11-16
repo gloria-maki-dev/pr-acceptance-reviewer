@@ -160,7 +160,18 @@ export function App() {
                     </li>
                   ))}
                 </ol>
-                <p className="output__model">Revisado por {result.model}.</p>
+                {result.officialProvider ? (
+                  <p className="output__model">
+                    Revisado por {result.model}, vía {result.provider}.
+                  </p>
+                ) : (
+                  <p className="output__model output__model--warning" role="note">
+                    <strong>Esto no lo ha revisado la API de Claude.</strong> Respondió «
+                    {result.provider}», así que estos veredictos no son un juicio real sobre tu
+                    diff. Arranca el backend con una ANTHROPIC_API_KEY y sin ANTHROPIC_BASE_URL
+                    para revisarlo de verdad.
+                  </p>
+                )}
               </>
             )}
           </div>

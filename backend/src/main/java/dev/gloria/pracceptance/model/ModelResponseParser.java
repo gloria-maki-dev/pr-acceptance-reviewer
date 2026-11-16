@@ -7,15 +7,20 @@ import dev.gloria.pracceptance.diff.DiffSide;
 import dev.gloria.pracceptance.review.Evidence;
 import dev.gloria.pracceptance.review.ReviewStatus;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Convierte la respuesta en bruto del modelo en veredictos, o falla diciendo qué venía mal.
+ * Convierte la respuesta en bruto del modelo en veredictos, diciendo qué venía mal.
  *
- * <p>No da nada por hecho: un modelo puede devolver prosa, JSON truncado, un estado que no existe
- * o menos veredictos que criterios. Todo eso es {@link ModelResponseException}, nunca un resultado
- * a medias que luego se muestre como si fuera bueno.
+ * <p>No da nada por hecho: un modelo puede devolver prosa, JSON truncado, un estado que no existe,
+ * o saltarse criterios. Lo que se entiende se conserva; lo que no, se anota por criterio para que
+ * la pantalla pueda decir «No verificado» y explicar por qué, en vez de tirar toda la revisión.
+ * Solo cuando no queda ni un veredicto en pie se lanza {@link ModelResponseException}.
  */
 @Component
 public class ModelResponseParser {
@@ -26,36 +31,69 @@ public class ModelResponseParser {
         this.objectMapper = objectMapper;
     }
 
-    public List<ModelVerdict> parse(String rawResponse, int expectedCriteria) {
+    /**
+     * @param criterionIds los identificadores que se le pidieron al modelo, en orden
+     * @throws ModelResponseException solo si no se puede aprovechar nada de la respuesta
+     */
+    public ParsedModelResponse parse(String rawResponse, List<String> criterionIds) {
         JsonNode root = readJson(rawResponse);
 
         JsonNode results = root.get("results");
         if (results == null || !results.isArray()) {
             throw new ModelResponseException("El JSON del modelo no trae la lista «results».");
         }
-        if (results.size() != expectedCriteria) {
-            throw new ModelResponseException("El modelo devolvió " + results.size()
-                    + " veredictos y se esperaban " + expectedCriteria + ", uno por criterio.");
-        }
 
-        ModelVerdict[] ordered = new ModelVerdict[expectedCriteria];
+        Set<String> expected = new LinkedHashSet<>(criterionIds);
+        Map<String, ModelVerdict> verdicts = new LinkedHashMap<>();
+        Map<String, String> problems = new LinkedHashMap<>();
+        int ignored = 0;
+
         for (JsonNode node : results) {
-            int index = readCriterionIndex(node, expectedCriteria);
-            if (ordered[index - 1] != null) {
-                throw new ModelResponseException(
-                        "El modelo devolvió dos veredictos para el criterio " + index + ".");
+            String id = readCriterionId(node);
+            if (id == null || !expected.contains(id)) {
+                // Un veredicto que no se sabe a qué criterio va no se puede colocar en ninguno.
+                ignored++;
+                continue;
             }
-            ordered[index - 1] = new ModelVerdict(readStatus(node), readExplanation(node), readEvidence(node));
+            if (verdicts.containsKey(id) || problems.containsKey(id)) {
+                verdicts.remove(id);
+                problems.put(id, "el modelo devolvió más de un veredicto para él y no se sabe cuál vale");
+                continue;
+            }
+            try {
+                verdicts.put(id, new ModelVerdict(readStatus(node), readExplanation(node), readEvidence(node)));
+            } catch (ModelResponseException e) {
+                problems.put(id, lowerFirst(e.getMessage()));
+            }
         }
 
-        List<ModelVerdict> verdicts = new ArrayList<>(expectedCriteria);
-        for (int i = 0; i < expectedCriteria; i++) {
-            if (ordered[i] == null) {
-                throw new ModelResponseException("Falta el veredicto del criterio " + (i + 1) + ".");
-            }
-            verdicts.add(ordered[i]);
+        if (verdicts.isEmpty()) {
+            throw new ModelResponseException(
+                    "El modelo no devolvió ningún veredicto utilizable: " + results.size()
+                            + " en la respuesta, " + problems.size() + " mal formados y " + ignored
+                            + " sin un identificador de criterio reconocible.");
         }
-        return List.copyOf(verdicts);
+        return new ParsedModelResponse(verdicts, problems);
+    }
+
+    private static String readCriterionId(JsonNode node) {
+        JsonNode id = node.get("criterionId");
+        if (id != null && id.isTextual() && !id.textValue().isBlank()) {
+            return id.textValue().strip().toUpperCase();
+        }
+        // Tolerancia: un modelo puede devolver el número en vez del identificador.
+        JsonNode index = node.get("criterionIndex");
+        if (index != null && index.isInt()) {
+            return "C" + index.intValue();
+        }
+        return null;
+    }
+
+    private static String lowerFirst(String message) {
+        if (message == null || message.isEmpty()) {
+            return "venía mal formado";
+        }
+        return Character.toLowerCase(message.charAt(0)) + message.substring(1);
     }
 
     private JsonNode readJson(String rawResponse) {
@@ -133,18 +171,6 @@ public class ModelResponseParser {
             }
         }
         return -1;
-    }
-
-    private static int readCriterionIndex(JsonNode node, int expectedCriteria) {
-        JsonNode index = node.get("criterionIndex");
-        if (index == null || !index.isInt()) {
-            throw new ModelResponseException("Un veredicto no trae «criterionIndex» como número entero.");
-        }
-        int value = index.intValue();
-        if (value < 1 || value > expectedCriteria) {
-            throw new ModelResponseException("El criterio " + value + " no existe: hay " + expectedCriteria + ".");
-        }
-        return value;
     }
 
     private static ReviewStatus readStatus(JsonNode node) {

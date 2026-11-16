@@ -52,6 +52,16 @@ public class AnthropicModelClient implements ModelClient {
     }
 
     @Override
+    public String providerDescription() {
+        return ProviderLabel.describe(baseUrl);
+    }
+
+    @Override
+    public boolean isOfficialProvider() {
+        return ProviderLabel.isOfficial(baseUrl);
+    }
+
+    @Override
     public String completeJson(String systemPrompt, String userPrompt) {
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(model)

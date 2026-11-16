@@ -41,10 +41,12 @@ Las piezas del backend, en el orden en que trabajan:
 
 1. `DiffParser` interpreta el diff unificado y sitúa cada línea: archivo, lado y número. Si el
    texto no es un diff, falla aquí, antes de gastar una llamada al modelo.
-2. `PromptBuilder` le manda al modelo el diff ya anotado (`[ADDED 20] …`), para que citar bien le
-   resulte más fácil que inventarse una referencia.
-3. `ModelResponseParser` valida la respuesta: JSON, un veredicto por criterio, estados conocidos,
-   citas completas. Cualquier otra cosa es un error, nunca un resultado a medias.
+2. `PromptBuilder` numera los criterios con un identificador (`C1`, `C2`, …) y le manda al modelo
+   el diff ya anotado (`[ADDED 20] …`), para que citar bien le resulte más fácil que inventarse
+   una referencia.
+3. `ModelResponseParser` coloca cada veredicto en su identificador y valida lo que trae: estados
+   conocidos, explicación, citas completas. Un veredicto que no se entiende tumba a su criterio,
+   no a la revisión entera.
 4. `EvidenceVerifier` compara cada cita con el diff de verdad y degrada lo que no cuadre.
 
 Y cuando una cita se rechaza, la pantalla **no la enseña**, ni enseña la explicación que se
@@ -135,19 +137,30 @@ POST /api/reviews
       "verificationNote": null
     }
   ],
-  "model": "claude-opus-5-5"
+  "model": "claude-opus-5-5",
+  "provider": "API de Claude",
+  "officialProvider": true
 }
 ```
 
-Códigos de error: **400** si la petición o el diff no valen, **502** si el modelo devolvió algo
-inservible, **503** si falta la credencial o no se pudo llegar al modelo. Todos responden
+`status` es `MET`, `NOT_MET` o `UNVERIFIED`; `explanation` es `null` cuando el modelo no llegó a
+evaluar ese criterio, y `verificationNote` dice qué falló al comprobarlo.
+
+`provider` dice quién atendió la petición de verdad. Si defines `ANTHROPIC_BASE_URL`, la respuesta
+lo declara (`officialProvider: false`) y la pantalla avisa en grande de que eso no lo ha revisado
+la API de Claude. Una pantalla que dice «Revisado por claude-opus-5-5» cuando detrás hay un
+servidor de pruebas miente, y es una mentira cara.
+
+Códigos de error: **400** si la petición o el diff no valen, **502** si de la respuesta del modelo
+no se pudo aprovechar ni un veredicto, **503** si falta la credencial o no se pudo llegar al
+modelo. Todos responden
 `{"error": "…"}` con un mensaje pensado para enseñarlo en pantalla.
 
 ## Pruebas
 
 ```bash
-cd backend  && mvn test     # 65 pruebas
-cd frontend && npm test     # 12 pruebas
+cd backend  && mvn test     # 77 pruebas
+cd frontend && npm test     # 14 pruebas
 ```
 
 Las del backend cubren, entre otras cosas, las tres situaciones que decidieron el diseño: una cita
@@ -158,6 +171,11 @@ Las pruebas leen los diffs de `examples/`, los mismos que carga la pantalla: si 
 ejemplo, las pruebas lo notan.
 
 ## Decisiones que quizá te preguntes
+
+**Una respuesta a medias no tira la revisión.** Cada criterio va con su identificador y vuelve con
+su resultado, siempre. Si el modelo se deja uno, ese criterio sale como No verificado diciendo que
+el modelo no lo evaluó, y los demás se muestran con normalidad. La alternativa —fallar entero— deja
+a quien revisa sin nada por culpa de un criterio.
 
 **El formato de la respuesta lo impone el prompt, no un esquema de salida estructurada.** A
 propósito: la aplicación tiene que seguir siendo correcta cuando el modelo ignora el formato, y ese

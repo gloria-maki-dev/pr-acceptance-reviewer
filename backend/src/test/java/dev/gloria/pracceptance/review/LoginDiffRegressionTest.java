@@ -45,11 +45,11 @@ class LoginDiffRegressionTest {
     private static final String RESPUESTA_LOGIN =
             """
             {"results":[
-              {"criterionIndex":1,"status":"MET",
+              {"criterionId":"C1","status":"MET",
                "explanation":"El mensaje pasa a decir «La contraseña es incorrecta».",
                "evidence":{"file":"src/login/messages.ts","side":"ADDED","lineNumber":2,
                            "snippet":"wrongPassword: 'La contraseña es incorrecta'"}},
-              {"criterionIndex":2,"status":"NOT_MET",
+              {"criterionId":"C2","status":"NOT_MET",
                "explanation":"El mensaje de cuenta bloqueada pasa a decir «Inténtalo más tarde».",
                "evidence":{"file":"src/login/messages.ts","side":"ADDED","lineNumber":3,
                            "snippet":"accountLocked: 'Inténtalo más tarde'"}}
@@ -60,11 +60,11 @@ class LoginDiffRegressionTest {
     private static final String RESPUESTA_DEL_CARRITO =
             """
             {"results":[
-              {"criterionIndex":1,"status":"MET",
+              {"criterionId":"C1","status":"MET",
                "explanation":"El resumen del carrito pasa a mostrar «Total estimado».",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
                            "snippet":"<span className=\\"cart-summary__label\\">Total estimado</span>"}},
-              {"criterionIndex":2,"status":"NOT_MET",
+              {"criterionId":"C2","status":"NOT_MET",
                "explanation":"El historial de pedidos también cambia.",
                "evidence":{"file":"src/components/OrderHistory.tsx","side":"ADDED","lineNumber":32,
                            "snippet":"Total estimado:"}}
@@ -125,10 +125,10 @@ class LoginDiffRegressionTest {
         ScriptedModelClient client = new ScriptedModelClient(
                 """
                 {"results":[
-                  {"criterionIndex":1,"status":"MET","explanation":"Carrito.",
+                  {"criterionId":"C1","status":"MET","explanation":"Carrito.",
                    "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
                                "snippet":"Total estimado"}},
-                  {"criterionIndex":2,"status":"NOT_MET","explanation":"Historial.",
+                  {"criterionId":"C2","status":"NOT_MET","explanation":"Historial.",
                    "evidence":{"file":"src/components/OrderHistory.tsx","side":"ADDED","lineNumber":32,
                                "snippet":"Total estimado:"}}
                 ]}

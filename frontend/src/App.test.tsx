@@ -6,6 +6,8 @@ import type { ReviewResponse } from './types';
 
 const RESPUESTA_CON_FALLO: ReviewResponse = {
   model: 'claude-opus-5-5',
+  provider: 'API de Claude',
+  officialProvider: true,
   results: [
     {
       criterion: 'Cambiar el texto «Total» a «Total estimado» en el resumen del carrito.',
@@ -47,6 +49,8 @@ const DIFF_LOGIN = `diff --git a/src/login/messages.ts b/src/login/messages.ts
 
 const RESPUESTA_LOGIN: ReviewResponse = {
   model: 'claude-opus-5-5',
+  provider: 'API de Claude',
+  officialProvider: true,
   results: [
     {
       criterion: 'El mensaje de contraseña incorrecta debe decir «La contraseña es incorrecta».',
@@ -145,6 +149,8 @@ describe('App', () => {
 
     mockFetchOnce(200, {
       model: 'claude-opus-5-5',
+      provider: 'API de Claude',
+      officialProvider: true,
       results: [
         {
           criterion: 'Un criterio',
@@ -247,5 +253,77 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/mvn spring-boot:run/),
     );
+  });
+
+  it('enseña los tres criterios aunque el modelo solo evalúe dos', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+
+    mockFetchOnce(200, {
+      model: 'claude-opus-5-5',
+      provider: 'API de Claude',
+      officialProvider: true,
+      results: [
+        {
+          criterion: 'El listado de pedidos debe tener un botón «Exportar CSV».',
+          status: 'MET',
+          explanation: 'El listado añade el botón.',
+          evidence: {
+            file: 'src/pedidos/ListaPedidos.tsx',
+            side: 'ADDED',
+            lineNumber: 15,
+            snippet: 'Exportar CSV',
+          },
+          verificationNote: null,
+        },
+        {
+          criterion: 'El CSV debe empezar por una fila de cabecera con los nombres de columna.',
+          status: 'NOT_MET',
+          explanation: 'No se emite fila de cabecera.',
+          evidence: {
+            file: 'src/pedidos/exportarCsv.ts',
+            side: 'ADDED',
+            lineNumber: 2,
+            snippet: 'return pedidos',
+          },
+          verificationNote: null,
+        },
+        {
+          criterion: 'Los importes deben exportarse siempre con dos decimales.',
+          status: 'UNVERIFIED',
+          explanation: null,
+          verificationNote: 'El modelo no evaluó este criterio: no devolvió ningún veredicto para él.',
+          evidence: null,
+        },
+      ],
+    } satisfies ReviewResponse);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3));
+    expect(screen.getByText('Cumplido')).toBeInTheDocument();
+    expect(screen.getByText('No cumplido')).toBeInTheDocument();
+    expect(screen.getByText('No verificado')).toBeInTheDocument();
+    expect(screen.getByText(/El modelo no evaluó este criterio/)).toBeInTheDocument();
+    expect(screen.getByText('Sin comprobar.')).toBeInTheDocument();
+  });
+
+  it('avisa en pantalla cuando no ha respondido la API de Claude', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+
+    mockFetchOnce(200, {
+      ...RESPUESTA_CON_FALLO,
+      provider: 'Proveedor simulado en localhost:9191',
+      officialProvider: false,
+    } satisfies ReviewResponse);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Esto no lo ha revisado la API de Claude/)).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('note')).toHaveTextContent('Proveedor simulado en localhost:9191');
+    expect(screen.queryByText(/Revisado por claude-opus-5-5, vía/)).not.toBeInTheDocument();
   });
 });
