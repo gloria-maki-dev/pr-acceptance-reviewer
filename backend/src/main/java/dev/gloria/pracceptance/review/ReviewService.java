@@ -12,10 +12,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Revisa un diff contra unos criterios de aceptación.
+ * Reviews a diff against a set of acceptance criteria.
  *
- * <p>El orden importa: primero se interpreta el diff (si no se puede, no se gasta una llamada al
- * modelo), después se le pregunta al modelo, y al final se comprueba cada cita contra el diff.
+ * <p>The order matters: the diff is parsed first (if it cannot be, no call to the model is
+ * spent), then the model is asked, and finally every citation is checked against the diff.
  */
 @Service
 public class ReviewService {
@@ -62,7 +62,7 @@ public class ReviewService {
             String id = ids.get(i);
             ModelVerdict verdict = parsed.verdicts().get(id);
             if (verdict != null) {
-                // Las citas se comprueban contra el diff de ESTA petición, nunca contra otro.
+                // Citations are checked against THIS request's diff, never another one.
                 results.add(verifier.verify(criteria.get(i), verdict, diff));
             } else {
                 results.add(notEvaluated(criteria.get(i), parsed.problems().get(id)));
@@ -76,15 +76,15 @@ public class ReviewService {
     }
 
     /**
-     * Un criterio del que el modelo no dijo nada aprovechable.
+     * A criterion the model said nothing usable about.
      *
-     * <p>Sale como No verificado, que es exactamente lo que es: nadie lo ha comprobado. Lo que no
-     * puede pasar es que se pierda de la lista, ni que arrastre consigo los demás criterios.
+     * <p>It comes back as Not verified, which is exactly what it is: nobody checked it. What must
+     * not happen is for it to vanish from the list, or to drag the other criteria down with it.
      */
     private static CriterionResult notEvaluated(String criterion, String problem) {
         String note = problem == null
-                ? "El modelo no evaluó este criterio: no devolvió ningún veredicto para él."
-                : "El modelo respondió a este criterio, pero " + problem;
-        return new CriterionResult(criterion, ReviewStatus.UNVERIFIED, null, null, note);
+                ? "The model did not evaluate this criterion: it returned no verdict for it."
+                : "The model answered this criterion, but " + problem;
+        return new CriterionResult(criterion, ReviewStatus.NOT_VERIFIED, null, null, note);
     }
 }

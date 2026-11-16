@@ -1,24 +1,24 @@
 package dev.gloria.pracceptance.model;
 
-/** Puerta de salida hacia el modelo. Tenerla como interfaz deja probar todo lo demás sin red. */
+/** The way out to the model. Keeping it an interface is what lets everything else be tested offline. */
 public interface ModelClient {
 
     /**
-     * Manda los dos prompts al modelo y devuelve su respuesta en bruto, que se espera que sea JSON.
+     * Sends both prompts to the model and returns its raw answer, which is expected to be JSON.
      *
-     * @throws ModelUnavailableException si no se pudo llegar al modelo
+     * @throws ModelUnavailableException if the model could not be reached
      */
     String completeJson(String systemPrompt, String userPrompt);
 
-    /** Identificador del modelo, para mostrarlo en la pantalla junto al resultado. */
+    /** The model identifier, to show on screen next to the result. */
     String modelName();
 
-    /** Quién atendió de verdad la petición: la API de Claude, o lo que sea que haya en su lugar. */
+    /** Who actually answered: the Anthropic API, or whatever stands in its place. */
     default String providerDescription() {
         return ProviderLabel.OFFICIAL;
     }
 
-    /** {@code false} si la petición no fue a la API de Claude. */
+    /** {@code false} when the request did not go to the Anthropic API. */
     default boolean isOfficialProvider() {
         return true;
     }

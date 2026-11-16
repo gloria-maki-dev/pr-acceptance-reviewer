@@ -8,34 +8,34 @@ import org.junit.jupiter.api.Test;
 class ProviderLabelTest {
 
     @Test
-    @DisplayName("sin base URL, la petición va a la API de Claude")
-    void sinBaseUrl() {
+    @DisplayName("with no base URL the request goes to the Anthropic API")
+    void withoutBaseUrl() {
         assertThat(ProviderLabel.isOfficial(null)).isTrue();
         assertThat(ProviderLabel.isOfficial("  ")).isTrue();
-        assertThat(ProviderLabel.describe(null)).isEqualTo("API de Claude");
+        assertThat(ProviderLabel.describe(null)).isEqualTo("Anthropic API");
     }
 
     @Test
-    @DisplayName("un servidor en localhost se llama proveedor simulado, con su puerto")
+    @DisplayName("a server on localhost is called a simulated provider, with its port")
     void localhost() {
         assertThat(ProviderLabel.isOfficial("http://localhost:9191")).isFalse();
         assertThat(ProviderLabel.describe("http://localhost:9191"))
-                .isEqualTo("Proveedor simulado en localhost:9191");
+                .isEqualTo("Simulated provider at localhost:9191");
         assertThat(ProviderLabel.describe("http://127.0.0.1:8081"))
-                .isEqualTo("Proveedor simulado en 127.0.0.1:8081");
+                .isEqualTo("Simulated provider at 127.0.0.1:8081");
     }
 
     @Test
-    @DisplayName("cualquier otro destino se llama proveedor alternativo, no simulado")
-    void pasarelaPropia() {
-        assertThat(ProviderLabel.describe("https://pasarela.interna.example.com/v1"))
-                .isEqualTo("Proveedor alternativo en pasarela.interna.example.com");
+    @DisplayName("any other destination is called an alternative provider, not a simulated one")
+    void ownGateway() {
+        assertThat(ProviderLabel.describe("https://gateway.internal.example.com/v1"))
+                .isEqualTo("Alternative provider at gateway.internal.example.com");
     }
 
     @Test
-    @DisplayName("una URL que no se puede leer se enseña tal cual, sin fingir que es la oficial")
-    void urlIlegible() {
-        assertThat(ProviderLabel.isOfficial("no es una url")).isFalse();
-        assertThat(ProviderLabel.describe("no es una url")).contains("no es una url");
+    @DisplayName("an unreadable URL is shown as-is, without pretending it is the official one")
+    void unreadableUrl() {
+        assertThat(ProviderLabel.isOfficial("not a url")).isFalse();
+        assertThat(ProviderLabel.describe("not a url")).contains("not a url");
     }
 }

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class ReviewServiceTest {
 
-    /** Modelo de mentira: devuelve siempre la misma respuesta y guarda lo que se le pidió. */
+    /** A pretend model: always the same answer, and it remembers what it was asked. */
     private static final class StubModelClient implements ModelClient {
         private final String response;
         private String systemPrompt;
@@ -36,7 +36,7 @@ class ReviewServiceTest {
 
         @Override
         public String modelName() {
-            return "modelo-de-prueba";
+            return "test-model";
         }
     }
 
@@ -49,124 +49,127 @@ class ReviewServiceTest {
                 client, new ModelResponseParser(new ObjectMapper()), new DiffParser(), new EvidenceVerifier());
     }
 
-    private static final String RESPUESTA_DIFF_CON_FALLO =
+    private static final String ANSWER_FOR_DIFF_WITH_BUG =
             """
             {"results":[
               {"criterionId":"C1","status":"MET",
-               "explanation":"El resumen del carrito ahora muestra «Total estimado».",
+               "explanation":"The cart summary now shows \\"Estimated total\\".",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
-                           "snippet":"<span className=\\"cart-summary__label\\">Total estimado</span>"}},
+                           "snippet":"<span className=\\"cart-summary__label\\">Estimated total</span>"}},
               {"criterionId":"C2","status":"NOT_MET",
-               "explanation":"El historial de pedidos también cambia de «Total» a «Total estimado».",
+               "explanation":"Order history changes from \\"Total\\" to \\"Estimated total\\" as well.",
                "evidence":{"file":"src/components/OrderHistory.tsx","side":"ADDED","lineNumber":32,
-                           "snippet":"Total estimado: {formatPrice(order.total)}"}}
+                           "snippet":"Estimated total: {formatPrice(order.total)}"}}
             ]}
             """;
 
-    private static final String RESPUESTA_DIFF_CORREGIDO =
+    private static final String ANSWER_FOR_FIXED_DIFF =
             """
             {"results":[
               {"criterionId":"C1","status":"MET",
-               "explanation":"El resumen del carrito ahora muestra «Total estimado».",
+               "explanation":"The cart summary now shows \\"Estimated total\\".",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
-                           "snippet":"Total estimado"}},
+                           "snippet":"Estimated total"}},
               {"criterionId":"C2","status":"MET",
-               "explanation":"El diff solo toca CartSummary.tsx, así que el historial sigue igual.",
+               "explanation":"The diff only touches CartSummary.tsx, so order history is unchanged.",
                "evidence":{"file":"src/components/CartSummary.tsx","side":"REMOVED","lineNumber":20,
                            "snippet":"<span className=\\"cart-summary__label\\">Total</span>"}}
             ]}
             """;
 
     @Test
-    @DisplayName("el diff con fallo da Cumplido y No cumplido, citando el historial de pedidos")
-    void diffConFallo() {
-        ReviewResult result =
-                serviceWith(RESPUESTA_DIFF_CON_FALLO).review(ExampleFixtures.criteria(), ExampleFixtures.brokenDiff());
+    @DisplayName("the buggy diff gives Met and Not met, citing order history")
+    void diffWithBug() {
+        ReviewResult result = serviceWith(ANSWER_FOR_DIFF_WITH_BUG)
+                .review(ExampleFixtures.criteria(), ExampleFixtures.diffWithBug());
 
         assertThat(result.results()).hasSize(2);
 
-        CriterionResult primero = result.results().get(0);
-        assertThat(primero.status()).isEqualTo(ReviewStatus.MET);
-        assertThat(primero.evidence().file()).isEqualTo("src/components/CartSummary.tsx");
+        CriterionResult first = result.results().get(0);
+        assertThat(first.status()).isEqualTo(ReviewStatus.MET);
+        assertThat(first.evidence().file()).isEqualTo("src/components/CartSummary.tsx");
 
-        CriterionResult segundo = result.results().get(1);
-        assertThat(segundo.status()).isEqualTo(ReviewStatus.NOT_MET);
-        assertThat(segundo.evidence().file()).isEqualTo("src/components/OrderHistory.tsx");
-        assertThat(segundo.evidence().lineNumber()).isEqualTo(32);
-        assertThat(segundo.evidence().side()).isEqualTo(DiffSide.ADDED);
-        assertThat(segundo.verificationNote()).isNull();
+        CriterionResult second = result.results().get(1);
+        assertThat(second.status()).isEqualTo(ReviewStatus.NOT_MET);
+        assertThat(second.evidence().file()).isEqualTo("src/components/OrderHistory.tsx");
+        assertThat(second.evidence().lineNumber()).isEqualTo(32);
+        assertThat(second.evidence().side()).isEqualTo(DiffSide.ADDED);
+        assertThat(second.verificationNote()).isNull();
     }
 
     @Test
-    @DisplayName("el diff corregido da los dos criterios como Cumplidos")
-    void diffCorregido() {
+    @DisplayName("the fixed diff gives both criteria as Met")
+    void fixedDiff() {
         ReviewResult result =
-                serviceWith(RESPUESTA_DIFF_CORREGIDO).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
+                serviceWith(ANSWER_FOR_FIXED_DIFF).review(ExampleFixtures.criteria(), ExampleFixtures.diffFixed());
 
-        assertThat(result.results()).extracting(CriterionResult::status).containsExactly(ReviewStatus.MET, ReviewStatus.MET);
+        assertThat(result.results())
+                .extracting(CriterionResult::status)
+                .containsExactly(ReviewStatus.MET, ReviewStatus.MET);
     }
 
     @Test
-    @DisplayName("devuelve el modelo y quién atendió de verdad la petición")
-    void devuelveElModeloYElProveedor() {
+    @DisplayName("returns the model and who actually answered the request")
+    void returnsModelAndProvider() {
         ReviewResult result =
-                serviceWith(RESPUESTA_DIFF_CORREGIDO).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
+                serviceWith(ANSWER_FOR_FIXED_DIFF).review(ExampleFixtures.criteria(), ExampleFixtures.diffFixed());
 
-        assertThat(result.model()).isEqualTo("modelo-de-prueba");
-        assertThat(result.provider()).isEqualTo("API de Claude");
+        assertThat(result.model()).isEqualTo("test-model");
+        assertThat(result.provider()).isEqualTo("Anthropic API");
         assertThat(result.officialProvider()).isTrue();
     }
 
     @Test
-    @DisplayName("una cita inventada por el modelo acaba como No verificado")
-    void citaInventada() {
-        String respuesta =
+    @DisplayName("a citation the model invented ends up Not verified")
+    void inventedCitation() {
+        String answer =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Cambiado.",
+                  {"criterionId":"C1","status":"MET","explanation":"Changed.",
                    "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":417,
-                               "snippet":"Total estimado"}},
-                  {"criterionId":"C2","status":"MET","explanation":"Nada más cambia.","evidence":null}
+                               "snippet":"Estimated total"}},
+                  {"criterionId":"C2","status":"MET","explanation":"Nothing else changes.","evidence":null}
                 ]}
                 """;
 
-        ReviewResult result = serviceWith(respuesta).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
+        ReviewResult result = serviceWith(answer).review(ExampleFixtures.criteria(), ExampleFixtures.diffFixed());
 
-        assertThat(result.results()).extracting(CriterionResult::status)
-                .containsExactly(ReviewStatus.UNVERIFIED, ReviewStatus.UNVERIFIED);
+        assertThat(result.results())
+                .extracting(CriterionResult::status)
+                .containsExactly(ReviewStatus.NOT_VERIFIED, ReviewStatus.NOT_VERIFIED);
         assertThat(result.results().get(0).verificationNote()).contains("417");
     }
 
     @Test
-    @DisplayName("una respuesta inválida del modelo se propaga como error del modelo")
-    void respuestaInvalida() {
-        ReviewService service = serviceWith("Claro, aquí tienes mi opinión sobre el diff.");
+    @DisplayName("an unusable answer from the model is raised as a model error")
+    void unusableAnswer() {
+        ReviewService service = serviceWith("Sure, here is my take on the diff.");
 
-        assertThatThrownBy(() -> service.review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff()))
+        assertThatThrownBy(() -> service.review(ExampleFixtures.criteria(), ExampleFixtures.diffFixed()))
                 .isInstanceOf(ModelResponseException.class);
     }
 
     @Test
-    @DisplayName("un diff que no se puede interpretar se rechaza antes de llamar al modelo")
-    void diffIlegible() {
-        StubModelClient client = new StubModelClient(RESPUESTA_DIFF_CORREGIDO);
+    @DisplayName("an unreadable diff is rejected before the model is called")
+    void unreadableDiff() {
+        StubModelClient client = new StubModelClient(ANSWER_FOR_FIXED_DIFF);
         ReviewService service = serviceWith(client);
 
-        assertThatThrownBy(() -> service.review(List.of("Un criterio"), "esto no es un diff"))
+        assertThatThrownBy(() -> service.review(List.of("A criterion"), "this is not a diff"))
                 .isInstanceOf(InvalidDiffException.class);
         assertThat(client.userPrompt).isNull();
     }
 
     @Test
-    @DisplayName("el prompt lleva los criterios numerados y el diff anotado con números de línea")
-    void contenidoDelPrompt() {
-        StubModelClient client = new StubModelClient(RESPUESTA_DIFF_CORREGIDO);
-        serviceWith(client).review(ExampleFixtures.criteria(), ExampleFixtures.fixedDiff());
+    @DisplayName("the prompt carries the criteria with identifiers and the annotated diff")
+    void promptContents() {
+        StubModelClient client = new StubModelClient(ANSWER_FOR_FIXED_DIFF);
+        serviceWith(client).review(ExampleFixtures.criteria(), ExampleFixtures.diffFixed());
 
-        assertThat(client.systemPrompt).contains("MET", "NOT_MET", "UNVERIFIED");
-        assertThat(client.userPrompt).contains("C1. Cambiar el texto «Total»");
+        assertThat(client.systemPrompt).contains("MET", "NOT_MET", "NOT_VERIFIED");
+        assertThat(client.userPrompt).contains("C1. Change the text");
         assertThat(client.userPrompt).contains("C1, C2");
-        assertThat(client.userPrompt).contains("ARCHIVO: src/components/CartSummary.tsx");
+        assertThat(client.userPrompt).contains("FILE: src/components/CartSummary.tsx");
         assertThat(client.userPrompt).contains("[ADDED 20]");
     }
 }

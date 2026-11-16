@@ -6,7 +6,7 @@ index 3a1f2c4..9b7e5d1 100644
        </ul>
        <footer className="cart-summary__footer">
 -        <span className="cart-summary__label">Total</span>
-+        <span className="cart-summary__label">Total estimado</span>
++        <span className="cart-summary__label">Estimated total</span>
          <span className="cart-summary__amount">{formatPrice(total)}</span>
        </footer>
      </section>

@@ -1,6 +1,6 @@
 package dev.gloria.pracceptance.model;
 
-/** El modelo respondió, pero su respuesta no tiene la forma que esperábamos. */
+/** The model answered, but its answer is not the shape we expected. */
 public class ModelResponseException extends RuntimeException {
 
     public ModelResponseException(String message) {

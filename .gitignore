@@ -1,23 +1,29 @@
-# Dependencias
+# Dependencies
 node_modules/
 
-# Artefactos de compilación
+# Build output
 target/
 dist/
 *.tsbuildinfo
 
-# Secretos — nunca al repositorio
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Secrets - never commit
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
-# Herramientas locales de desarrollo (no forman parte del proyecto)
+# Local development tooling, not part of the project
 .superpowers/
 .specify/
 .claude/
 docs/superpowers/
 
-# Sistema operativo y editores
+# OS and editors
 .DS_Store
 .idea/
 .vscode/

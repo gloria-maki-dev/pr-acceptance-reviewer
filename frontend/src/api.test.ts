@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { parseCriteria } from './api';
 
 describe('parseCriteria', () => {
-  it('toma un criterio por línea', () => {
-    expect(parseCriteria('Uno\nDos')).toEqual(['Uno', 'Dos']);
+  it('takes one criterion per line', () => {
+    expect(parseCriteria('One\nTwo')).toEqual(['One', 'Two']);
   });
 
-  it('se salta las líneas vacías y los espacios de los extremos', () => {
-    expect(parseCriteria('  Uno  \n\n   \nDos\n')).toEqual(['Uno', 'Dos']);
+  it('skips blank lines and trims the edges', () => {
+    expect(parseCriteria('  One  \n\n   \nTwo\n')).toEqual(['One', 'Two']);
   });
 
-  it('devuelve una lista vacía cuando no hay nada', () => {
+  it('returns an empty list when there is nothing', () => {
     expect(parseCriteria('   \n  ')).toEqual([]);
   });
 });

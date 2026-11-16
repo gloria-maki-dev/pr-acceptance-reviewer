@@ -6,9 +6,9 @@ spring:
     name: pr-acceptance-reviewer
 
 reviewer:
-  # Modelo que revisa. Ver https://platform.claude.com/docs para la lista de modelos.
+  # The model that reviews. See https://platform.claude.com/docs for the list of models.
   model: ${REVIEWER_MODEL:claude-opus-5-5}
-  # Tope de tokens de la respuesta del modelo.
+  # Cap on the model's answer.
   max-tokens: ${REVIEWER_MAX_TOKENS:16000}
 
 logging:

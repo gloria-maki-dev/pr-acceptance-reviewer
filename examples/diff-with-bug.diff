@@ -6,7 +6,7 @@ index 3a1f2c4..9b7e5d1 100644
        </ul>
        <footer className="cart-summary__footer">
 -        <span className="cart-summary__label">Total</span>
-+        <span className="cart-summary__label">Total estimado</span>
++        <span className="cart-summary__label">Estimated total</span>
          <span className="cart-summary__amount">{formatPrice(total)}</span>
        </footer>
      </section>
@@ -17,7 +17,7 @@ index 7c2d9a8..1e4b6f3 100644
 @@ -31,5 +31,5 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
            <td className="order-history__date">{formatDate(order.placedAt)}</td>
 -          <td className="order-history__total">Total: {formatPrice(order.total)}</td>
-+          <td className="order-history__total">Total estimado: {formatPrice(order.total)}</td>
++          <td className="order-history__total">Estimated total: {formatPrice(order.total)}</td>
            <td className="order-history__status">{order.status}</td>
          </tr>
        </tbody>

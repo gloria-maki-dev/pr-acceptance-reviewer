@@ -1,2 +1,0 @@
-Cambiar el texto «Total» a «Total estimado» en el resumen del carrito.
-Limitar el cambio al resumen del carrito. El historial de pedidos debe seguir mostrando «Total».

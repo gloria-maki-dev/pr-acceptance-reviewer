@@ -1,10 +1,10 @@
 import { SIDE_LABEL, SIDE_MARKER, type Evidence } from '../types';
 
 /**
- * La cita, dibujada como la línea de diff que es: medianil con el número, marcador y el fragmento.
+ * The citation, drawn as the diff line it is: gutter with the number, marker, and the snippet.
  *
- * <p>Enseñarla así es el objetivo del proyecto: quien revisa puede ir al diff, buscar ese archivo y
- * esa línea, y comprobar en un segundo si la evidencia sostiene lo que dice la explicación.
+ * Showing it this way is the point of the project: the reviewer can go to the diff, find that
+ * file and that line, and check in a second whether the evidence supports the explanation.
  */
 export function EvidenceLine({ evidence }: { evidence: Evidence }) {
   const side = evidence.side.toLowerCase();

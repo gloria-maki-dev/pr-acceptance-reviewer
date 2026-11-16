@@ -1,6 +1,6 @@
 package dev.gloria.pracceptance.diff;
 
-/** El texto recibido no se puede interpretar como un diff unificado. */
+/** The text received cannot be read as a unified diff. */
 public class InvalidDiffException extends RuntimeException {
 
     public InvalidDiffException(String message) {

@@ -15,14 +15,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Llama a la API de Claude desde el backend.
+ * Calls the Anthropic API from the backend.
  *
- * <p>La credencial se lee de la variable de entorno {@code ANTHROPIC_API_KEY} y no sale nunca de
- * aquí: el navegador habla solo con este backend.
+ * <p>The credential is read from the {@code ANTHROPIC_API_KEY} environment variable and never
+ * leaves this class: the browser only ever talks to this backend.
  *
- * <p>El cliente se construye la primera vez que hace falta, no al arrancar, para que la aplicación
- * levante igualmente sin credencial y la pantalla pueda explicar qué falta en vez de morirse en el
- * arranque.
+ * <p>The client is built the first time it is needed rather than at startup, so the application
+ * comes up without a credential and the screen can explain what is missing instead of dying on
+ * boot.
  */
 @Component
 public class AnthropicModelClient implements ModelClient {
@@ -67,8 +67,8 @@ public class AnthropicModelClient implements ModelClient {
                 .model(model)
                 .maxTokens(maxTokens)
                 .system(systemPrompt)
-                // Revisar código exige precisión más que rapidez, y en Claude Opus 5.5 el esfuerzo
-                // por defecto es «medium».
+                // Reviewing code calls for precision over speed, and on Claude Opus 5.5 the
+                // default effort is "medium".
                 .outputConfig(OutputConfig.builder()
                         .effort(OutputConfig.Effort.HIGH)
                         .build())
@@ -79,21 +79,21 @@ public class AnthropicModelClient implements ModelClient {
         try {
             message = client().messages().create(params);
         } catch (AnthropicException e) {
-            // El detalle va al log, no al navegador: el mensaje del SDK puede traer el cuerpo de
-            // error de la API y, con ANTHROPIC_BASE_URL, el host interno de la pasarela.
-            log.warn("La llamada al modelo falló", e);
+            // The detail goes to the log, not the browser: the SDK message can carry the API's
+            // error body and, with ANTHROPIC_BASE_URL, the gateway's internal host.
+            log.warn("The call to the model failed", e);
             throw new ModelUnavailableException(
-                    "No se pudo hablar con el modelo. Mira el log del servidor para ver el detalle.", e);
+                    "Could not reach the model. See the server log for the detail.", e);
         }
 
         StopReason stopReason = message.stopReason().orElse(null);
         if (StopReason.REFUSAL.equals(stopReason)) {
-            throw new ModelResponseException("El modelo declinó revisar este diff.");
+            throw new ModelResponseException("The model declined to review this diff.");
         }
         if (StopReason.MAX_TOKENS.equals(stopReason)) {
             throw new ModelResponseException(
-                    "La respuesta del modelo se cortó por longitud. Prueba con un diff más corto "
-                            + "o sube REVIEWER_MAX_TOKENS.");
+                    "The model's answer was cut off by length. Try a shorter diff, or raise "
+                            + "REVIEWER_MAX_TOKENS.");
         }
 
         String text = message.content().stream()
@@ -103,7 +103,7 @@ public class AnthropicModelClient implements ModelClient {
                 .strip();
 
         if (text.isEmpty()) {
-            throw new ModelResponseException("El modelo respondió sin texto.");
+            throw new ModelResponseException("The model answered with no text.");
         }
         return text;
     }
@@ -117,15 +117,15 @@ public class AnthropicModelClient implements ModelClient {
             if (client == null) {
                 if (apiKey == null || apiKey.isBlank()) {
                     throw new ModelUnavailableException(
-                            "Falta la variable de entorno ANTHROPIC_API_KEY. Mira el archivo .env.example "
-                                    + "del repositorio para saber cómo configurarla.");
+                            "The ANTHROPIC_API_KEY environment variable is missing. See .env.example "
+                                    + "in the repository for how to set it.");
                 }
                 AnthropicOkHttpClient.Builder builder = AnthropicOkHttpClient.builder()
                         .apiKey(apiKey)
-                        // El SDK espera diez minutos por defecto, con un hilo de Tomcat ocupado.
+                        // The SDK waits ten minutes by default, with a Tomcat thread tied up.
                         .timeout(Duration.ofSeconds(120));
                 if (baseUrl != null && !baseUrl.isBlank()) {
-                    // Para apuntar a una pasarela propia, o a un servidor de pruebas.
+                    // To point at a gateway of your own, or at a test server.
                     builder.baseUrl(baseUrl);
                 }
                 client = builder.build();

@@ -4,10 +4,10 @@ import dev.gloria.pracceptance.review.Evidence;
 import dev.gloria.pracceptance.review.ReviewStatus;
 
 /**
- * Lo que el modelo dice de un criterio, antes de comprobar nada.
+ * What the model says about one criterion, before anything is checked.
  *
- * <p>Separar esto de {@link dev.gloria.pracceptance.review.CriterionResult} es el centro del
- * proyecto: el veredicto del modelo es una propuesta, y solo pasa a ser un resultado cuando la
- * cita se ha podido localizar en el diff.
+ * <p>Keeping this apart from {@link dev.gloria.pracceptance.review.CriterionResult} is the heart
+ * of the project: the model's verdict is a proposal, and it only becomes a result once the
+ * citation has been found in the diff.
  */
 public record ModelVerdict(ReviewStatus status, String explanation, Evidence evidence) {}

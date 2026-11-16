@@ -4,75 +4,75 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { ReviewResponse } from './types';
 
-const RESPUESTA_CON_FALLO: ReviewResponse = {
+const ANSWER_WITH_BUG: ReviewResponse = {
   model: 'claude-opus-5-5',
-  provider: 'API de Claude',
+  provider: 'Anthropic API',
   officialProvider: true,
   results: [
     {
-      criterion: 'Cambiar el texto «Total» a «Total estimado» en el resumen del carrito.',
+      criterion: 'Change the text "Total" to "Estimated total" in the cart summary.',
       status: 'MET',
-      explanation: 'El resumen del carrito pasa a decir «Total estimado».',
+      explanation: 'The cart summary now reads "Estimated total".',
       evidence: {
         file: 'src/components/CartSummary.tsx',
         side: 'ADDED',
         lineNumber: 20,
-        snippet: '<span className="cart-summary__label">Total estimado</span>',
+        snippet: '<span className="cart-summary__label">Estimated total</span>',
       },
       verificationNote: null,
     },
     {
-      criterion: 'Limitar el cambio al resumen del carrito.',
+      criterion: 'Keep the change to the cart summary only.',
       status: 'NOT_MET',
-      explanation: 'El historial de pedidos también cambia.',
+      explanation: 'Order history changes as well.',
       evidence: {
         file: 'src/components/OrderHistory.tsx',
         side: 'ADDED',
         lineNumber: 32,
-        snippet: 'Total estimado: {formatPrice(order.total)}',
+        snippet: 'Estimated total: {formatPrice(order.total)}',
       },
       verificationNote: null,
     },
   ],
 };
 
-const DIFF_LOGIN = `diff --git a/src/login/messages.ts b/src/login/messages.ts
+const LOGIN_DIFF = `diff --git a/src/login/messages.ts b/src/login/messages.ts
 --- a/src/login/messages.ts
 +++ b/src/login/messages.ts
 @@ -1,4 +1,4 @@
  export const loginMessages = {
--  wrongPassword: 'Error de inicio de sesion',
--  accountLocked: 'Tu cuenta esta bloqueada',
-+  wrongPassword: 'La contrasena es incorrecta',
-+  accountLocked: 'Intentalo mas tarde',
+-  wrongPassword: 'Sign-in error',
+-  accountLocked: 'Your account is locked',
++  wrongPassword: 'The password is incorrect',
++  accountLocked: 'Try again later',
  };`;
 
-const RESPUESTA_LOGIN: ReviewResponse = {
+const LOGIN_ANSWER: ReviewResponse = {
   model: 'claude-opus-5-5',
-  provider: 'API de Claude',
+  provider: 'Anthropic API',
   officialProvider: true,
   results: [
     {
-      criterion: 'El mensaje de contraseña incorrecta debe decir «La contraseña es incorrecta».',
+      criterion: 'The wrong-password message must read "The password is incorrect".',
       status: 'MET',
-      explanation: 'El mensaje pasa a decir «La contraseña es incorrecta».',
+      explanation: 'The message now reads "The password is incorrect".',
       evidence: {
         file: 'src/login/messages.ts',
         side: 'ADDED',
         lineNumber: 2,
-        snippet: "wrongPassword: 'La contraseña es incorrecta'",
+        snippet: "wrongPassword: 'The password is incorrect'",
       },
       verificationNote: null,
     },
     {
-      criterion: 'El mensaje de cuenta bloqueada debe seguir diciendo «Tu cuenta está bloqueada».',
+      criterion: 'The locked-account message must still read "Your account is locked".',
       status: 'NOT_MET',
-      explanation: 'El mensaje de cuenta bloqueada pasa a decir «Inténtalo más tarde».',
+      explanation: 'The locked-account message now reads "Try again later".',
       evidence: {
         file: 'src/login/messages.ts',
         side: 'ADDED',
         lineNumber: 3,
-        snippet: "accountLocked: 'Inténtalo más tarde'",
+        snippet: "accountLocked: 'Try again later'",
       },
       verificationNote: null,
     },
@@ -98,232 +98,227 @@ describe('App', () => {
     vi.unstubAllGlobals();
   });
 
-  it('empieza invitando a cargar el ejemplo, con «Revisar PR» apagado', () => {
+  it('starts by inviting you to load the example, with "Review PR" disabled', () => {
     render(<App />);
 
-    expect(screen.getByText(/Pega un diff y pulsa/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Revisar PR' })).toBeDisabled();
+    expect(screen.getByText(/Paste a diff and press/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review PR' })).toBeDisabled();
   });
 
-  it('«Probar ejemplo» carga el diff que toca los dos archivos', async () => {
+  it('"Try example" loads the diff that touches both files', async () => {
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
 
     const diff = screen.getByLabelText('Diff') as HTMLTextAreaElement;
     expect(diff.value).toContain('src/components/CartSummary.tsx');
     expect(diff.value).toContain('src/components/OrderHistory.tsx');
-    expect(screen.getByRole('button', { name: 'Revisar PR' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Review PR' })).toBeEnabled();
   });
 
-  it('«Cargar diff corregido» deja solo el resumen del carrito', async () => {
+  it('"Load fixed diff" leaves only the cart summary', async () => {
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Cargar diff corregido' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load fixed diff' }));
 
     const diff = screen.getByLabelText('Diff') as HTMLTextAreaElement;
     expect(diff.value).toContain('src/components/CartSummary.tsx');
     expect(diff.value).not.toContain('OrderHistory.tsx');
   });
 
-  it('enseña un veredicto por criterio con su cita', async () => {
+  it('shows one verdict per criterion with its citation', async () => {
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
 
-    const fetchMock = mockFetchOnce(200, RESPUESTA_CON_FALLO);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    const fetchMock = mockFetchOnce(200, ANSWER_WITH_BUG);
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
 
-    await waitFor(() => expect(screen.getByText('Cumplido')).toBeInTheDocument());
-    expect(screen.getByText('No cumplido')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Met')).toBeInTheDocument());
+    expect(screen.getByText('Not met')).toBeInTheDocument();
     expect(screen.getByText('src/components/OrderHistory.tsx')).toBeInTheDocument();
     expect(screen.getByText('32')).toBeInTheDocument();
-    expect(screen.getByText(/Revisado por claude-opus-5-5/)).toBeInTheDocument();
+    expect(screen.getByText(/Reviewed by claude-opus-5-5/)).toBeInTheDocument();
 
     const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(options.body as string).acceptanceCriteria).toHaveLength(2);
   });
 
-  it('oculta la cita rechazada y la explicación que se apoyaba en ella', async () => {
+  it('hides a rejected citation and the explanation that rested on it', async () => {
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
 
     mockFetchOnce(200, {
       model: 'claude-opus-5-5',
-      provider: 'API de Claude',
+      provider: 'Anthropic API',
       officialProvider: true,
       results: [
         {
-          criterion: 'Un criterio',
-          status: 'UNVERIFIED',
-          explanation: 'Cambiado.',
+          criterion: 'A criterion',
+          status: 'NOT_VERIFIED',
+          explanation: 'Changed.',
           evidence: {
             file: 'src/components/CartSummary.tsx',
             side: 'ADDED',
             lineNumber: 417,
-            snippet: 'Total estimado',
+            snippet: 'Estimated total',
           },
-          verificationNote: 'En «src/components/CartSummary.tsx» no hay ninguna línea 417.',
+          verificationNote: '`src/components/CartSummary.tsx` has no ADDED line 417 in this diff.',
         },
       ],
     } satisfies ReviewResponse);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
 
-    await waitFor(() => expect(screen.getByText('No verificado')).toBeInTheDocument());
-    expect(screen.getByText(/Sin evidencia que lo sostenga/)).toBeInTheDocument();
-    expect(screen.getByText(/no hay ninguna línea 417/)).toBeInTheDocument();
-    // Ni la cita rechazada ni la explicación que dependía de ella llegan a la pantalla.
+    await waitFor(() => expect(screen.getByText('Not verified')).toBeInTheDocument());
+    expect(screen.getByText(/No evidence to back it/)).toBeInTheDocument();
+    expect(screen.getByText(/no ADDED line 417/)).toBeInTheDocument();
+    // Neither the rejected citation nor the explanation that depended on it reach the screen.
     expect(screen.queryByText('src/components/CartSummary.tsx')).not.toBeInTheDocument();
     expect(screen.queryByText('417')).not.toBeInTheDocument();
-    expect(screen.queryByText('Cambiado.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Changed.')).not.toBeInTheDocument();
   });
 
-  it('revisar un diff de login tras el ejemplo solo enseña evidencia de messages.ts', async () => {
+  it('reviewing a login diff after the example only shows evidence from messages.ts', async () => {
     render(<App />);
 
-    // Primero la revisión del ejemplo TIENDA-412.
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
-    mockFetchOnce(200, RESPUESTA_CON_FALLO);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
+    mockFetchOnce(200, ANSWER_WITH_BUG);
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
     await waitFor(() => expect(screen.getByText('src/components/OrderHistory.tsx')).toBeInTheDocument());
 
-    // Ahora unos criterios y un diff propios.
-    fireEvent.change(screen.getByLabelText('Criterios de aceptación'), {
+    fireEvent.change(screen.getByLabelText('Acceptance criteria'), {
       target: {
         value:
-          'El mensaje de contraseña incorrecta debe decir «La contraseña es incorrecta».\n' +
-          'El mensaje de cuenta bloqueada debe seguir diciendo «Tu cuenta está bloqueada».',
+          'The wrong-password message must read "The password is incorrect".\n' +
+          'The locked-account message must still read "Your account is locked".',
       },
     });
-    fireEvent.change(screen.getByLabelText('Diff'), { target: { value: DIFF_LOGIN } });
+    fireEvent.change(screen.getByLabelText('Diff'), { target: { value: LOGIN_DIFF } });
 
-    const fetchMock = mockFetchOnce(200, RESPUESTA_LOGIN);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    const fetchMock = mockFetchOnce(200, LOGIN_ANSWER);
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
 
     await waitFor(() => expect(screen.getAllByText('src/login/messages.ts')).toHaveLength(2));
     expect(screen.queryByText('src/components/CartSummary.tsx')).not.toBeInTheDocument();
     expect(screen.queryByText('src/components/OrderHistory.tsx')).not.toBeInTheDocument();
-    expect(screen.getByText('Cumplido')).toBeInTheDocument();
-    expect(screen.getByText('No cumplido')).toBeInTheDocument();
+    expect(screen.getByText('Met')).toBeInTheDocument();
+    expect(screen.getByText('Not met')).toBeInTheDocument();
 
-    // La petición lleva los criterios y el diff nuevos, no los del ejemplo.
     const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    const enviado = JSON.parse(options.body as string);
-    expect(enviado.diff).toContain('src/login/messages.ts');
-    expect(enviado.diff).not.toContain('CartSummary.tsx');
-    expect(enviado.acceptanceCriteria[0]).toContain('La contraseña es incorrecta');
+    const sent = JSON.parse(options.body as string);
+    expect(sent.diff).toContain('src/login/messages.ts');
+    expect(sent.diff).not.toContain('CartSummary.tsx');
+    expect(sent.acceptanceCriteria[0]).toContain('The password is incorrect');
   });
 
-  it('tras un error del proveedor se puede reintentar sin recargar', async () => {
+  it('shows all three criteria even when the model only evaluates two', async () => {
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
-
-    mockFetchOnce(503, { error: 'No se pudo hablar con el modelo.' });
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
-
-    mockFetchOnce(200, RESPUESTA_CON_FALLO);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
-
-    await waitFor(() => expect(screen.getByText('Cumplido')).toBeInTheDocument());
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
-
-  it('enseña el mensaje que manda el servidor cuando algo falla', async () => {
-    render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
-
-    mockFetchOnce(503, { error: 'Falta la variable de entorno ANTHROPIC_API_KEY.' });
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Falta la variable de entorno ANTHROPIC_API_KEY.',
-      ),
-    );
-  });
-
-  it('explica qué hacer si el backend no está arrancado', async () => {
-    render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
-
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(/mvn spring-boot:run/),
-    );
-  });
-
-  it('enseña los tres criterios aunque el modelo solo evalúe dos', async () => {
-    render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
 
     mockFetchOnce(200, {
       model: 'claude-opus-5-5',
-      provider: 'API de Claude',
+      provider: 'Anthropic API',
       officialProvider: true,
       results: [
         {
-          criterion: 'El listado de pedidos debe tener un botón «Exportar CSV».',
+          criterion: 'The exportButtonLabel constant must have the value "Download CSV".',
           status: 'MET',
-          explanation: 'El listado añade el botón.',
+          explanation: 'The label was updated.',
           evidence: {
-            file: 'src/pedidos/ListaPedidos.tsx',
+            file: 'src/orders/exportCsv.ts',
             side: 'ADDED',
-            lineNumber: 15,
-            snippet: 'Exportar CSV',
+            lineNumber: 1,
+            snippet: "exportButtonLabel = 'Download CSV'",
           },
           verificationNote: null,
         },
         {
-          criterion: 'El CSV debe empezar por una fila de cabecera con los nombres de columna.',
+          criterion: 'The CSV separator must still be the semicolon.',
           status: 'NOT_MET',
-          explanation: 'No se emite fila de cabecera.',
+          explanation: 'The separator became a comma.',
           evidence: {
-            file: 'src/pedidos/exportarCsv.ts',
+            file: 'src/orders/exportCsv.ts',
             side: 'ADDED',
             lineNumber: 2,
-            snippet: 'return pedidos',
+            snippet: "const separator = ','",
           },
           verificationNote: null,
         },
         {
-          criterion: 'Los importes deben exportarse siempre con dos decimales.',
-          status: 'UNVERIFIED',
+          criterion: 'The export endpoint must require authentication.',
+          status: 'NOT_VERIFIED',
           explanation: null,
-          verificationNote: 'El modelo no evaluó este criterio: no devolvió ningún veredicto para él.',
           evidence: null,
+          verificationNote: 'The model did not evaluate this criterion: it returned no verdict for it.',
         },
       ],
     } satisfies ReviewResponse);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
 
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3));
-    expect(screen.getByText('Cumplido')).toBeInTheDocument();
-    expect(screen.getByText('No cumplido')).toBeInTheDocument();
-    expect(screen.getByText('No verificado')).toBeInTheDocument();
-    expect(screen.getByText(/El modelo no evaluó este criterio/)).toBeInTheDocument();
-    expect(screen.getByText('Sin comprobar.')).toBeInTheDocument();
+    expect(screen.getByText('Met')).toBeInTheDocument();
+    expect(screen.getByText('Not met')).toBeInTheDocument();
+    expect(screen.getByText('Not verified')).toBeInTheDocument();
+    expect(screen.getByText(/did not evaluate this criterion/)).toBeInTheDocument();
+    expect(screen.getByText('Not checked.')).toBeInTheDocument();
   });
 
-  it('avisa en pantalla cuando no ha respondido la API de Claude', async () => {
+  it('warns on screen when the Anthropic API did not answer', async () => {
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Probar ejemplo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
 
     mockFetchOnce(200, {
-      ...RESPUESTA_CON_FALLO,
-      provider: 'Proveedor simulado en localhost:9191',
+      ...ANSWER_WITH_BUG,
+      provider: 'Simulated provider at localhost:9191',
       officialProvider: false,
     } satisfies ReviewResponse);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar PR' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
 
     await waitFor(() =>
-      expect(screen.getByText(/Esto no lo ha revisado la API de Claude/)).toBeInTheDocument(),
+      expect(screen.getByText(/This was not reviewed by the Anthropic API/)).toBeInTheDocument(),
     );
-    expect(screen.getByRole('note')).toHaveTextContent('Proveedor simulado en localhost:9191');
-    expect(screen.queryByText(/Revisado por claude-opus-5-5, vía/)).not.toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent('Simulated provider at localhost:9191');
+    expect(screen.queryByText(/Reviewed by claude-opus-5-5, via/)).not.toBeInTheDocument();
+  });
+
+  it('shows the message the server sends when something fails', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
+
+    mockFetchOnce(503, { error: 'The ANTHROPIC_API_KEY environment variable is missing.' });
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The ANTHROPIC_API_KEY environment variable is missing.',
+      ),
+    );
+  });
+
+  it('explains what to do when the backend is not running', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/mvn spring-boot:run/));
+  });
+
+  it('lets you retry after a provider error without reloading', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Try example' }));
+
+    mockFetchOnce(503, { error: 'Could not reach the model.' });
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+    mockFetchOnce(200, ANSWER_WITH_BUG);
+    await userEvent.click(screen.getByRole('button', { name: 'Review PR' }));
+
+    await waitFor(() => expect(screen.getByText('Met')).toBeInTheDocument());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

@@ -5,56 +5,56 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/** Arma los dos prompts que se le mandan al modelo. */
+/** Builds the two prompts sent to the model. */
 @Component
 public class PromptBuilder {
 
     private static final String SYSTEM_PROMPT =
             """
-            Eres quien revisa una pull request. Te dan los criterios de aceptación de un ticket y un
-            diff ya anotado, y decides si el diff cumple cada criterio.
+            You review pull requests. You are given the acceptance criteria of a ticket and an
+            annotated diff, and you decide whether the diff satisfies each criterion.
 
-            Cada criterio llega con un identificador (C1, C2, C3...). El diff llega con una línea
-            por cambio, con esta forma:
+            Each criterion comes with an identifier (C1, C2, C3...). The diff comes with one line
+            per change, in this shape:
 
-                ARCHIVO: ruta/del/archivo.tsx
-                [ADDED 20] contenido de la línea 20 del archivo nuevo
-                [REMOVED 20] contenido de la línea 20 del archivo antiguo
-                [CONTEXT 18] línea sin cambios, numerada como en el archivo nuevo
+                FILE: path/to/file.tsx
+                [ADDED 20] contents of line 20 of the new file
+                [REMOVED 20] contents of line 20 of the old file
+                [CONTEXT 18] unchanged line, numbered as in the new file
 
-            Reglas, en orden de importancia:
+            Rules, in order of importance:
 
-            1. Devuelve un veredicto por cada identificador, sin saltarte ninguno, aunque no tengas
-               nada que decir de él: en ese caso el estado es UNVERIFIED. Los estados son:
-               - MET: el diff cumple el criterio, y puedes señalar la línea que lo demuestra.
-               - NOT_MET: el diff incumple el criterio, y puedes señalar la línea que lo demuestra.
-               - UNVERIFIED: el diff no da contexto suficiente para decidir.
-            2. MET y NOT_MET exigen una cita. Si no puedes señalar una línea concreta del diff,
-               el estado es UNVERIFIED.
-            3. Las citas se copian del diff anotado, nunca se inventan: «file» es la ruta que
-               aparece tras ARCHIVO, «side» es ADDED, REMOVED o CONTEXT, «lineNumber» es el número
-               que va entre corchetes y «snippet» es texto copiado literalmente de esa línea.
-               Una cita que no se corresponda con el diff se descarta y el criterio queda
-               como No verificado, así que no arriesgues: si dudas, usa UNVERIFIED.
-            4. El diff solo muestra los trozos que cambian. No supongas nada del resto del archivo
-               ni de archivos que no aparecen. Si un criterio habla de que algo NO debe cambiar y
-               ese algo no aparece en el diff, está cumplido: el diff es todo lo que cambia.
-            5. «explanation» es una frase en español, breve y concreta, que diga qué viste. Nada de
-               repetir el criterio ni de hablar de ti mismo.
+            1. Return one verdict per identifier, skipping none, even when you have nothing to say
+               about it: in that case the status is NOT_VERIFIED. The statuses are:
+               - MET: the diff satisfies the criterion, and you can point at the line that proves it.
+               - NOT_MET: the diff violates the criterion, and you can point at the line that proves it.
+               - NOT_VERIFIED: the diff does not give enough context to decide.
+            2. MET and NOT_MET require a citation. If you cannot point at a specific line of the
+               diff, the status is NOT_VERIFIED.
+            3. Citations are copied from the annotated diff, never invented: "file" is the path
+               after FILE, "side" is ADDED, REMOVED or CONTEXT, "lineNumber" is the number in
+               brackets, and "snippet" is text copied literally from that line. A citation that
+               does not match the diff is thrown out and the criterion ends up Not verified, so do
+               not gamble: when in doubt, use NOT_VERIFIED.
+            4. The diff only shows what changed. Assume nothing about the rest of a file or about
+               files that do not appear. If a criterion says something must NOT change and that
+               something is nowhere in the diff, it is met: the diff is everything that changed.
+            5. "explanation" is one short, concrete sentence saying what you saw. Do not restate
+               the criterion and do not talk about yourself.
 
-            Responde únicamente con un objeto JSON, sin texto alrededor y sin bloque de código:
+            Answer with a single JSON object, with no text around it and no code fence:
 
             {"results":[{"criterionId":"C1","status":"MET","explanation":"...",
               "evidence":{"file":"...","side":"ADDED","lineNumber":1,"snippet":"..."}}]}
 
-            «evidence» vale null cuando el estado es UNVERIFIED.
+            "evidence" is null when the status is NOT_VERIFIED.
             """;
 
     public String systemPrompt() {
         return SYSTEM_PROMPT;
     }
 
-    /** Los identificadores que se le mandan al modelo, en el orden de los criterios. */
+    /** The identifiers sent to the model, in the order of the criteria. */
     public static List<String> criterionIds(int criteriaCount) {
         List<String> ids = new ArrayList<>(criteriaCount);
         for (int i = 1; i <= criteriaCount; i++) {
@@ -66,12 +66,12 @@ public class PromptBuilder {
     public String userPrompt(List<String> criteria, ParsedDiff diff) {
         List<String> ids = criterionIds(criteria.size());
 
-        StringBuilder out = new StringBuilder("CRITERIOS DE ACEPTACIÓN\n\n");
+        StringBuilder out = new StringBuilder("ACCEPTANCE CRITERIA\n\n");
         for (int i = 0; i < criteria.size(); i++) {
             out.append(ids.get(i)).append(". ").append(criteria.get(i).strip()).append('\n');
         }
-        out.append("\nDIFF ANOTADO\n\n").append(diff.toAnnotatedText());
-        out.append("\nDevuelve un veredicto para cada uno de estos identificadores: ")
+        out.append("\nANNOTATED DIFF\n\n").append(diff.toAnnotatedText());
+        out.append("\nReturn one verdict for each of these identifiers: ")
                 .append(String.join(", ", ids))
                 .append(".\n");
         return out.toString();

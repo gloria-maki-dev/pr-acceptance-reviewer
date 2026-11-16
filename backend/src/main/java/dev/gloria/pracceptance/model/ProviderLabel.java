@@ -4,31 +4,31 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * Cómo se llama lo que hay al otro lado.
+ * What to call whatever is on the other end.
  *
- * <p>Existe porque una pantalla que dice «Revisado por claude-opus-5-5» cuando detrás hay un
- * servidor de pruebas en localhost miente, y es una mentira cara: quien revisa se cree unos
- * veredictos que nadie ha pensado. Si la petición no va a la API de Claude, aquí se dice.
+ * <p>This exists because a screen that says "Reviewed by claude-opus-5-5" while a test server on
+ * localhost is answering is lying, and it is an expensive lie: the reviewer believes verdicts
+ * nobody thought about. If the request did not go to the Anthropic API, it is said here.
  */
 public final class ProviderLabel {
 
-    public static final String OFFICIAL = "API de Claude";
+    public static final String OFFICIAL = "Anthropic API";
 
     private ProviderLabel() {
     }
 
-    /** {@code true} solo si no se ha desviado la API a otro sitio. */
+    /** {@code true} only when the API has not been pointed somewhere else. */
     public static boolean isOfficial(String baseUrl) {
         return baseUrl == null || baseUrl.isBlank();
     }
 
-    /** Un nombre honesto para enseñar junto al resultado. */
+    /** An honest name to show next to the result. */
     public static String describe(String baseUrl) {
         if (isOfficial(baseUrl)) {
             return OFFICIAL;
         }
         String host = host(baseUrl);
-        return (isLocal(host) ? "Proveedor simulado en " : "Proveedor alternativo en ") + host;
+        return (isLocal(host) ? "Simulated provider at " : "Alternative provider at ") + host;
     }
 
     private static boolean isLocal(String host) {

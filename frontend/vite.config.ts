@@ -2,8 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 
-// Los diffs de ejemplo viven en examples/, en la raíz del repositorio, para que la pantalla y
-// las pruebas del backend usen exactamente los mismos archivos.
+// The example diffs live in examples/, at the repository root, so the screen and the backend
+// tests use exactly the same files.
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
 export default defineConfig({
@@ -13,8 +13,8 @@ export default defineConfig({
     fs: {
       allow: [repoRoot],
     },
-    // El navegador solo habla con el frontend; el backend queda detrás de este proxy y la
-    // credencial del modelo nunca sale del servidor.
+    // The browser only talks to the frontend; the backend sits behind this proxy and the model
+    // credential never leaves the server.
     proxy: {
       '/api': {
         target: process.env.VITE_API_TARGET ?? 'http://localhost:8080',

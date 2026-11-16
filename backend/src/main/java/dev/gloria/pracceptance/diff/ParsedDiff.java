@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Un diff unificado ya interpretado.
+ * A unified diff, parsed.
  *
- * <p>Esta es la fuente de verdad contra la que se comprueban las citas del modelo: si una cita no
- * apunta a una línea que esté aquí, el criterio pasa a «No verificado».
+ * <p>This is the source of truth every citation from the model is checked against: a citation
+ * that does not point at a line held here turns its criterion into "Not verified".
  */
 public record ParsedDiff(List<DiffFile> files) {
 
@@ -15,13 +15,13 @@ public record ParsedDiff(List<DiffFile> files) {
         files = List.copyOf(files);
     }
 
-    /** Busca un archivo por ruta, tolerando los prefijos {@code a/} y {@code b/} del diff. */
+    /** Looks a file up by path, tolerating the {@code a/} and {@code b/} prefixes of the diff. */
     public Optional<DiffFile> file(String path) {
         String wanted = normalisePath(path);
         return files.stream().filter(f -> normalisePath(f.path()).equals(wanted)).findFirst();
     }
 
-    /** Compara rutas sin los prefijos del diff. Lo usa también {@link DiffParser} al agrupar. */
+    /** Compares paths without the diff's prefixes. Also used by {@link DiffParser} when grouping. */
     static String normalisePath(String path) {
         String cleaned = path == null ? "" : path.strip().replace('\\', '/');
         if (cleaned.startsWith("a/") || cleaned.startsWith("b/")) {
@@ -34,15 +34,15 @@ public record ParsedDiff(List<DiffFile> files) {
     }
 
     /**
-     * Rinde el diff con el archivo, el lado y el número de línea delante de cada línea.
+     * Renders the diff with the file, side and line number in front of every line.
      *
-     * <p>Es lo que se le manda al modelo: si lo único que ve son líneas ya etiquetadas, citar bien
-     * le resulta más fácil que inventarse una referencia.
+     * <p>This is what the model is shown. When all it sees are lines that are already labelled,
+     * citing one correctly is easier than making a reference up.
      */
     public String toAnnotatedText() {
         StringBuilder out = new StringBuilder();
         for (DiffFile file : files) {
-            out.append("ARCHIVO: ").append(file.path()).append('\n');
+            out.append("FILE: ").append(file.path()).append('\n');
             for (DiffLine line : file.lines()) {
                 out.append('[')
                         .append(line.side())

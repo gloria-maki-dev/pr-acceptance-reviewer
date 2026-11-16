@@ -15,12 +15,12 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * Convierte la respuesta en bruto del modelo en veredictos, diciendo qué venía mal.
+ * Turns the model's raw answer into verdicts, saying what came back wrong.
  *
- * <p>No da nada por hecho: un modelo puede devolver prosa, JSON truncado, un estado que no existe,
- * o saltarse criterios. Lo que se entiende se conserva; lo que no, se anota por criterio para que
- * la pantalla pueda decir «No verificado» y explicar por qué, en vez de tirar toda la revisión.
- * Solo cuando no queda ni un veredicto en pie se lanza {@link ModelResponseException}.
+ * <p>It assumes nothing: a model can return prose, truncated JSON, a status that does not exist,
+ * or skip criteria. What parses is kept; what does not is recorded per criterion so the screen
+ * can say "Not verified" and explain why, instead of throwing the whole review away. Only when
+ * no verdict is left standing is {@link ModelResponseException} raised.
  */
 @Component
 public class ModelResponseParser {
@@ -32,15 +32,15 @@ public class ModelResponseParser {
     }
 
     /**
-     * @param criterionIds los identificadores que se le pidieron al modelo, en orden
-     * @throws ModelResponseException solo si no se puede aprovechar nada de la respuesta
+     * @param criterionIds the identifiers the model was asked for, in order
+     * @throws ModelResponseException only when nothing in the answer can be used
      */
     public ParsedModelResponse parse(String rawResponse, List<String> criterionIds) {
         JsonNode root = readJson(rawResponse);
 
         JsonNode results = root.get("results");
         if (results == null || !results.isArray()) {
-            throw new ModelResponseException("El JSON del modelo no trae la lista «results».");
+            throw new ModelResponseException("The model's JSON has no `results` list.");
         }
 
         Set<String> expected = new LinkedHashSet<>(criterionIds);
@@ -51,13 +51,13 @@ public class ModelResponseParser {
         for (JsonNode node : results) {
             String id = readCriterionId(node);
             if (id == null || !expected.contains(id)) {
-                // Un veredicto que no se sabe a qué criterio va no se puede colocar en ninguno.
+                // A verdict with no known criterion cannot be placed on any of them.
                 ignored++;
                 continue;
             }
             if (verdicts.containsKey(id) || problems.containsKey(id)) {
                 verdicts.remove(id);
-                problems.put(id, "el modelo devolvió más de un veredicto para él y no se sabe cuál vale");
+                problems.put(id, "the model returned more than one verdict for it and there is no telling which counts");
                 continue;
             }
             try {
@@ -69,9 +69,9 @@ public class ModelResponseParser {
 
         if (verdicts.isEmpty()) {
             throw new ModelResponseException(
-                    "El modelo no devolvió ningún veredicto utilizable: " + results.size()
-                            + " en la respuesta, " + problems.size() + " mal formados y " + ignored
-                            + " sin un identificador de criterio reconocible.");
+                    "The model returned no usable verdict: " + results.size() + " in the answer, "
+                            + problems.size() + " malformed and " + ignored
+                            + " without a recognisable criterion identifier.");
         }
         return new ParsedModelResponse(verdicts, problems);
     }
@@ -81,7 +81,7 @@ public class ModelResponseParser {
         if (id != null && id.isTextual() && !id.textValue().isBlank()) {
             return id.textValue().strip().toUpperCase();
         }
-        // Tolerancia: un modelo puede devolver el número en vez del identificador.
+        // Tolerance: a model may return the number instead of the identifier.
         JsonNode index = node.get("criterionIndex");
         if (index != null && index.isInt()) {
             return "C" + index.intValue();
@@ -91,27 +91,27 @@ public class ModelResponseParser {
 
     private static String lowerFirst(String message) {
         if (message == null || message.isEmpty()) {
-            return "venía mal formado";
+            return "it came back malformed";
         }
         return Character.toLowerCase(message.charAt(0)) + message.substring(1);
     }
 
     private JsonNode readJson(String rawResponse) {
         if (rawResponse == null || rawResponse.isBlank()) {
-            throw new ModelResponseException("El modelo no devolvió nada.");
+            throw new ModelResponseException("The model returned nothing.");
         }
 
         String text = rawResponse.strip();
         if (text.indexOf('{') < 0) {
-            throw new ModelResponseException("El modelo no devolvió JSON: no hay ningún objeto en la respuesta.");
+            throw new ModelResponseException("The model returned no JSON: there is no object in the answer.");
         }
 
         List<JsonNode> answers = new ArrayList<>();
         JsonProcessingException lastFailure = null;
 
-        // Un objeto JSON puede venir envuelto en prosa, y la prosa puede traer sus propias llaves
-        // («el objeto {results} que devuelvo: {...}»). Probamos cada apertura de llave y nos
-        // quedamos con los objetos que de verdad son una respuesta.
+        // A JSON object may arrive wrapped in prose, and the prose may carry braces of its own
+        // ("the {results} object I return: {...}"). We try every opening brace and keep the
+        // objects that really are an answer.
         for (int start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
             int end = findMatchingBrace(text, start);
             if (end < 0) {
@@ -130,21 +130,21 @@ public class ModelResponseParser {
 
         if (answers.size() > 1) {
             throw new ModelResponseException(
-                    "El modelo devolvió " + answers.size() + " respuestas distintas y no se sabe cuál vale.");
+                    "The model returned " + answers.size() + " different answers and there is no telling which counts.");
         }
         if (answers.size() == 1) {
             return answers.get(0);
         }
         if (lastFailure != null) {
             throw new ModelResponseException(
-                    "El modelo no devolvió JSON válido: " + lastFailure.getOriginalMessage(), lastFailure);
+                    "The model did not return valid JSON: " + lastFailure.getOriginalMessage(), lastFailure);
         }
-        throw new ModelResponseException("El modelo no devolvió JSON válido: la respuesta está incompleta.");
+        throw new ModelResponseException("The model did not return valid JSON: the answer is incomplete.");
     }
 
     /**
-     * Devuelve la posición de la llave que cierra la que abre en {@code start}, saltándose las
-     * llaves que vivan dentro de una cadena. Devuelve -1 si nunca se cierra.
+     * Returns the position of the brace closing the one that opens at {@code start}, skipping
+     * braces that live inside a string. Returns -1 if it never closes.
      */
     private static int findMatchingBrace(String text, int start) {
         int depth = 0;
@@ -176,20 +176,20 @@ public class ModelResponseParser {
     private static ReviewStatus readStatus(JsonNode node) {
         String raw = text(node, "status");
         if (raw == null) {
-            throw new ModelResponseException("Un veredicto no trae «status».");
+            throw new ModelResponseException("A verdict has no `status`.");
         }
         try {
             return ReviewStatus.valueOf(raw.strip().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new ModelResponseException(
-                    "«" + raw + "» no es un estado válido. Los estados son MET, NOT_MET y UNVERIFIED.", e);
+                    "`" + raw + "` is not a valid status. The statuses are MET, NOT_MET and NOT_VERIFIED.", e);
         }
     }
 
     private static String readExplanation(JsonNode node) {
         String explanation = text(node, "explanation");
         if (explanation == null || explanation.isBlank()) {
-            throw new ModelResponseException("Un veredicto llega sin explicación.");
+            throw new ModelResponseException("A verdict arrives with no explanation.");
         }
         return explanation.strip();
     }
@@ -200,34 +200,34 @@ public class ModelResponseParser {
             return null;
         }
         if (!evidence.isObject()) {
-            throw new ModelResponseException("«evidence» tiene que ser un objeto o null.");
+            throw new ModelResponseException("`evidence` must be an object or null.");
         }
 
         String file = text(evidence, "file");
         if (file == null || file.isBlank()) {
-            throw new ModelResponseException("Una cita llega sin «file».");
+            throw new ModelResponseException("A citation arrives with no `file`.");
         }
 
         String rawSide = text(evidence, "side");
         if (rawSide == null) {
-            throw new ModelResponseException("Una cita llega sin «side».");
+            throw new ModelResponseException("A citation arrives with no `side`.");
         }
         DiffSide side;
         try {
             side = DiffSide.valueOf(rawSide.strip().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new ModelResponseException(
-                    "«" + rawSide + "» no es un lado del diff. Los lados son ADDED, REMOVED y CONTEXT.", e);
+                    "`" + rawSide + "` is not a side of the diff. The sides are ADDED, REMOVED and CONTEXT.", e);
         }
 
         JsonNode lineNumber = evidence.get("lineNumber");
         if (lineNumber == null || !lineNumber.isInt()) {
-            throw new ModelResponseException("Una cita llega sin «lineNumber» como número entero.");
+            throw new ModelResponseException("A citation arrives with no integer `lineNumber`.");
         }
 
         String snippet = text(evidence, "snippet");
         if (snippet == null || snippet.isBlank()) {
-            throw new ModelResponseException("Una cita llega sin «snippet».");
+            throw new ModelResponseException("A citation arrives with no `snippet`.");
         }
 
         return new Evidence(file.strip(), side, lineNumber.intValue(), snippet);

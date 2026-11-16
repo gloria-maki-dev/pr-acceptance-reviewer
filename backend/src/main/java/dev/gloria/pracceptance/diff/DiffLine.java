@@ -1,7 +1,7 @@
 package dev.gloria.pracceptance.diff;
 
 /**
- * Una línea del diff ya situada: de qué lado está, en qué número de línea y con qué contenido
- * (sin el prefijo {@code +}, {@code -} o espacio).
+ * One line of the diff, placed: which side it is on, which line number it has, and its content
+ * without the leading {@code +}, {@code -} or space.
  */
 public record DiffLine(DiffSide side, int lineNumber, String content) {}

@@ -35,122 +35,122 @@ class ReviewControllerTest {
     @MockBean
     private ReviewService reviewService;
 
-    private static final String CUERPO_VALIDO =
+    private static final String VALID_BODY =
             """
-            {"acceptanceCriteria":["Cambiar «Total» por «Total estimado»."],
-             "diff":"--- a/a.tsx\\n+++ b/a.tsx\\n@@ -1,1 +1,1 @@\\n-Total\\n+Total estimado\\n"}
+            {"acceptanceCriteria":["Change \\"Total\\" to \\"Estimated total\\"."],
+             "diff":"--- a/a.tsx\\n+++ b/a.tsx\\n@@ -1,1 +1,1 @@\\n-Total\\n+Estimated total\\n"}
             """;
 
     @Test
-    @DisplayName("devuelve 200 con un resultado por criterio")
-    void devuelveResultados() throws Exception {
+    @DisplayName("returns 200 with one result per criterion")
+    void returnsResults() throws Exception {
         given(reviewService.review(any(), any()))
                 .willReturn(new ReviewResult(
                         List.of(new CriterionResult(
-                                "Cambiar «Total» por «Total estimado».",
+                                "Change \"Total\" to \"Estimated total\".",
                                 ReviewStatus.MET,
-                                "Cambiado en la línea 1.",
-                                new Evidence("a.tsx", DiffSide.ADDED, 1, "Total estimado"),
+                                "Changed on line 1.",
+                                new Evidence("a.tsx", DiffSide.ADDED, 1, "Estimated total"),
                                 null)),
                         "claude-opus-5-5",
-                        "API de Claude",
+                        "Anthropic API",
                         true));
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.model").value("claude-opus-5-5"))
-                .andExpect(jsonPath("$.provider").value("API de Claude"))
+                .andExpect(jsonPath("$.provider").value("Anthropic API"))
                 .andExpect(jsonPath("$.officialProvider").value(true))
                 .andExpect(jsonPath("$.results[0].status").value("MET"))
                 .andExpect(jsonPath("$.results[0].evidence.file").value("a.tsx"))
                 .andExpect(jsonPath("$.results[0].evidence.side").value("ADDED"))
                 .andExpect(jsonPath("$.results[0].evidence.lineNumber").value(1))
-                .andExpect(jsonPath("$.results[0].explanation").value("Cambiado en la línea 1."));
+                .andExpect(jsonPath("$.results[0].explanation").value("Changed on line 1."));
     }
 
     @Test
-    @DisplayName("rechaza con 400 un cuerpo sin criterios")
-    void rechazaSinCriterios() throws Exception {
-        String cuerpo = """
+    @DisplayName("rejects a body with no criteria with 400")
+    void rejectsWithoutCriteria() throws Exception {
+        String body = """
                 {"acceptanceCriteria":[],"diff":"--- a/a\\n+++ b/a\\n@@ -1 +1 @@\\n-a\\n+b\\n"}
                 """;
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
-    @DisplayName("rechaza con 400 un cuerpo sin diff")
-    void rechazaSinDiff() throws Exception {
-        String cuerpo = """
-                {"acceptanceCriteria":["Algo"],"diff":"   "}
+    @DisplayName("rejects a body with no diff with 400")
+    void rejectsWithoutDiff() throws Exception {
+        String body = """
+                {"acceptanceCriteria":["Something"],"diff":"   "}
                 """;
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("rechaza con 400 un criterio en blanco")
-    void rechazaCriterioEnBlanco() throws Exception {
-        String cuerpo = """
+    @DisplayName("rejects a blank criterion with 400")
+    void rejectsBlankCriterion() throws Exception {
+        String body = """
                 {"acceptanceCriteria":["  "],"diff":"--- a/a\\n+++ b/a\\n@@ -1 +1 @@\\n-a\\n+b\\n"}
                 """;
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("traduce un diff ilegible a 400 con un mensaje para la pantalla")
-    void diffIlegible() throws Exception {
-        willThrow(new InvalidDiffException("No reconozco ningún archivo en el diff."))
+    @DisplayName("turns an unreadable diff into a 400 with a message for the screen")
+    void unreadableDiff() throws Exception {
+        willThrow(new InvalidDiffException("No changed files found in the diff."))
                 .given(reviewService)
                 .review(any(), any());
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("No reconozco ningún archivo en el diff."));
+                .andExpect(jsonPath("$.error").value("No changed files found in the diff."));
     }
 
     @Test
-    @DisplayName("traduce una respuesta inválida del modelo a 502")
-    void respuestaInvalidaDelModelo() throws Exception {
-        willThrow(new ModelResponseException("El modelo no devolvió JSON."))
+    @DisplayName("turns an invalid model answer into a 502")
+    void invalidModelAnswer() throws Exception {
+        willThrow(new ModelResponseException("The model did not return JSON."))
                 .given(reviewService)
                 .review(any(), any());
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.error").value("El modelo no devolvió JSON."));
+                .andExpect(jsonPath("$.error").value("The model did not return JSON."));
     }
 
     @Test
-    @DisplayName("traduce la falta de credenciales a 503 con una pista de configuración")
-    void sinCredenciales() throws Exception {
-        willThrow(new ModelUnavailableException("Falta la variable de entorno ANTHROPIC_API_KEY."))
+    @DisplayName("turns a missing credential into a 503 with a configuration hint")
+    void missingCredential() throws Exception {
+        willThrow(new ModelUnavailableException("The ANTHROPIC_API_KEY environment variable is missing."))
                 .given(reviewService)
                 .review(any(), any());
 
-        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
+        mockMvc.perform(post("/api/reviews").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.error").value("Falta la variable de entorno ANTHROPIC_API_KEY."));
+                .andExpect(jsonPath("$.error").value("The ANTHROPIC_API_KEY environment variable is missing."));
     }
 
     @Test
-    @DisplayName("un GET devuelve 405, no un 500")
-    void metodoNoPermitido() throws Exception {
+    @DisplayName("a GET returns 405, not a 500")
+    void methodNotAllowed() throws Exception {
         mockMvc.perform(get("/api/reviews"))
                 .andExpect(status().isMethodNotAllowed())
-                .andExpect(jsonPath("$.error").value("Este recurso solo acepta POST."));
+                .andExpect(jsonPath("$.error").value("This resource only accepts POST."));
     }
 
     @Test
-    @DisplayName("un cuerpo que no es JSON devuelve 415, no un 500")
-    void tipoDeContenidoNoSoportado() throws Exception {
+    @DisplayName("a non-JSON body returns 415, not a 500")
+    void unsupportedMediaType() throws Exception {
         mockMvc.perform(post("/api/reviews").contentType(MediaType.TEXT_PLAIN).content("hola"))
                 .andExpect(status().isUnsupportedMediaType())
-                .andExpect(jsonPath("$.error").value("El cuerpo tiene que ir como application/json."));
+                .andExpect(jsonPath("$.error").value("The body must be sent as application/json."));
     }
 }

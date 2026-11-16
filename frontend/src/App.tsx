@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { parseCriteria, ReviewError, reviewPullRequest } from './api';
 import { ResultCard } from './components/ResultCard';
-import { DIFF_CON_FALLO, DIFF_CORREGIDO, TICKET } from './examples';
+import { DIFF_FIXED, DIFF_WITH_BUG, TICKET } from './examples';
 import type { ReviewResponse } from './types';
 
 type Phase = 'idle' | 'loading' | 'done' | 'error';
@@ -43,7 +43,7 @@ export function App() {
         return;
       }
       setResult(null);
-      setError(cause instanceof ReviewError ? cause.message : 'Algo falló al revisar el diff.');
+      setError(cause instanceof ReviewError ? cause.message : 'Something failed while reviewing the diff.');
       setPhase('error');
     } finally {
       if (inFlight.current === controller) {
@@ -57,33 +57,34 @@ export function App() {
       <header className="masthead">
         <h1 className="masthead__title">PR Acceptance Reviewer</h1>
         <p className="masthead__lead">
-          Comprueba si un <code>git diff</code> cumple los criterios de aceptación de un ticket, y
-          enseña la línea exacta en la que se apoya cada veredicto.
+          Check whether a <code>git diff</code> satisfies a ticket&rsquo;s acceptance criteria, and
+          show the exact line each verdict rests on.
         </p>
       </header>
 
       <main className="workbench">
-        <section className="panel panel--input" aria-labelledby="titulo-entrada">
-          <h2 id="titulo-entrada" className="panel__title">
-            Lo que hay que revisar
+        <section className="panel panel--input" aria-labelledby="input-title">
+          <h2 id="input-title" className="panel__title">
+            What to review
           </h2>
 
           <div className="field">
-            <label className="field__label" htmlFor="criterios">
-              Criterios de aceptación
+            <label className="field__label" htmlFor="criteria">
+              Acceptance criteria
             </label>
             <textarea
-              id="criterios"
-              aria-describedby="criterios-pista"
+              id="criteria"
+              aria-describedby="criteria-hint"
               className="field__input"
               rows={4}
               value={criteriaText}
               onChange={(event) => setCriteriaText(event.target.value)}
-              placeholder="Un criterio por línea."
+              placeholder="One criterion per line."
               spellCheck={false}
             />
-            <span className="field__hint" id="criterios-pista">
-              Un criterio por línea. Ahora mismo hay {criteria.length}.
+            <span className="field__hint" id="criteria-hint">
+              One criterion per line. Right now there {criteria.length === 1 ? 'is' : 'are'}{' '}
+              {criteria.length}.
             </span>
           </div>
 
@@ -97,18 +98,18 @@ export function App() {
               rows={16}
               value={diffText}
               onChange={(event) => setDiffText(event.target.value)}
-              placeholder="Pega aquí la salida de git diff."
+              placeholder="Paste the output of git diff here."
               spellCheck={false}
             />
           </div>
 
           <div className="actions">
             <div className="actions__examples">
-              <button type="button" className="button" onClick={() => loadExample(DIFF_CON_FALLO)}>
-                Probar ejemplo
+              <button type="button" className="button" onClick={() => loadExample(DIFF_WITH_BUG)}>
+                Try example
               </button>
-              <button type="button" className="button" onClick={() => loadExample(DIFF_CORREGIDO)}>
-                Cargar diff corregido
+              <button type="button" className="button" onClick={() => loadExample(DIFF_FIXED)}>
+                Load fixed diff
               </button>
             </div>
             <button
@@ -117,25 +118,25 @@ export function App() {
               onClick={handleReview}
               disabled={!canReview}
             >
-              {phase === 'loading' ? 'Revisando…' : 'Revisar PR'}
+              {phase === 'loading' ? 'Reviewing…' : 'Review PR'}
             </button>
           </div>
 
           <p className="actions__ticket">
-            El ejemplo usa el ticket {TICKET.id}, «{TICKET.title}», de una tienda online.
+            The example uses ticket {TICKET.id}, &ldquo;{TICKET.title}&rdquo;, from an online store.
           </p>
         </section>
 
-        <section className="panel panel--output" aria-labelledby="titulo-resultado">
-          <h2 id="titulo-resultado" className="panel__title">
-            Resultado
+        <section className="panel panel--output" aria-labelledby="output-title">
+          <h2 id="output-title" className="panel__title">
+            Result
           </h2>
 
           <div aria-live="polite" aria-busy={phase === 'loading'} className="output">
             {phase === 'loading' && (
               <p className="placeholder placeholder--busy">
                 <span className="spinner" aria-hidden="true" />
-                Comprobando cada criterio contra el diff.
+                Checking each criterion against the diff.
               </p>
             )}
 
@@ -147,7 +148,7 @@ export function App() {
 
             {phase === 'idle' && (
               <p className="placeholder">
-                Pega un diff y pulsa «Revisar PR». O carga el ejemplo del ticket {TICKET.id}.
+                Paste a diff and press &ldquo;Review PR&rdquo;. Or load the {TICKET.id} example.
               </p>
             )}
 
@@ -162,14 +163,14 @@ export function App() {
                 </ol>
                 {result.officialProvider ? (
                   <p className="output__model">
-                    Revisado por {result.model}, vía {result.provider}.
+                    Reviewed by {result.model}, via {result.provider}.
                   </p>
                 ) : (
                   <p className="output__model output__model--warning" role="note">
-                    <strong>Esto no lo ha revisado la API de Claude.</strong> Respondió «
-                    {result.provider}», así que estos veredictos no son un juicio real sobre tu
-                    diff. Arranca el backend con una ANTHROPIC_API_KEY y sin ANTHROPIC_BASE_URL
-                    para revisarlo de verdad.
+                    <strong>This was not reviewed by the Anthropic API.</strong> &ldquo;
+                    {result.provider}&rdquo; answered, so these verdicts are not a real judgement
+                    of your diff. Start the backend with an ANTHROPIC_API_KEY and without
+                    ANTHROPIC_BASE_URL to review it for real.
                   </p>
                 )}
               </>

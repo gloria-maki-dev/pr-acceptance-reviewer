@@ -18,118 +18,121 @@ class EvidenceVerifierTest {
 
     @BeforeEach
     void setUp() {
-        diff = new DiffParser().parse(ExampleFixtures.brokenDiff());
+        diff = new DiffParser().parse(ExampleFixtures.diffWithBug());
     }
 
     private ModelVerdict verdict(ReviewStatus status, Evidence evidence) {
-        return new ModelVerdict(status, "La explicación del modelo.", evidence);
+        return new ModelVerdict(status, "The model's explanation.", evidence);
     }
 
     @Test
-    @DisplayName("una cita válida conserva el estado que dio el modelo")
-    void citaValida() {
-        Evidence cita = new Evidence(
-                "src/components/CartSummary.tsx", DiffSide.ADDED, 20, "<span className=\"cart-summary__label\">Total estimado</span>");
+    @DisplayName("a valid citation keeps the status the model gave")
+    void validCitation() {
+        Evidence citation = new Evidence(
+                "src/components/CartSummary.tsx",
+                DiffSide.ADDED,
+                20,
+                "<span className=\"cart-summary__label\">Estimated total</span>");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, citation), diff);
 
         assertThat(result.status()).isEqualTo(ReviewStatus.MET);
-        assertThat(result.evidence()).isEqualTo(cita);
+        assertThat(result.evidence()).isEqualTo(citation);
         assertThat(result.verificationNote()).isNull();
     }
 
     @Test
-    @DisplayName("acepta un fragmento parcial de la línea citada")
-    void fragmentoParcial() {
-        Evidence cita = new Evidence("src/components/OrderHistory.tsx", DiffSide.ADDED, 32, "Total estimado:");
+    @DisplayName("accepts a partial fragment of the cited line")
+    void partialFragment() {
+        Evidence citation = new Evidence("src/components/OrderHistory.tsx", DiffSide.ADDED, 32, "Estimated total:");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.NOT_MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.NOT_MET, citation), diff);
 
         assertThat(result.status()).isEqualTo(ReviewStatus.NOT_MET);
         assertThat(result.verificationNote()).isNull();
     }
 
     @Test
-    @DisplayName("una línea inventada degrada el resultado a No verificado")
-    void lineaInventada() {
-        Evidence cita = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 999, "Total estimado");
+    @DisplayName("an invented line number drops the result to Not verified")
+    void inventedLine() {
+        Evidence citation = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 999, "Estimated total");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, citation), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
-        assertThat(result.evidence()).isEqualTo(cita);
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
+        assertThat(result.evidence()).isEqualTo(citation);
         assertThat(result.verificationNote()).contains("999");
     }
 
     @Test
-    @DisplayName("un archivo que no está en el diff degrada el resultado a No verificado")
-    void archivoInventado() {
-        Evidence cita = new Evidence("src/components/Checkout.tsx", DiffSide.ADDED, 20, "Total estimado");
+    @DisplayName("a file that is not in the diff drops the result to Not verified")
+    void inventedFile() {
+        Evidence citation = new Evidence("src/components/Checkout.tsx", DiffSide.ADDED, 20, "Estimated total");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.NOT_MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.NOT_MET, citation), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
         assertThat(result.verificationNote()).contains("Checkout.tsx");
     }
 
     @Test
-    @DisplayName("un fragmento que no coincide con la línea degrada el resultado a No verificado")
-    void fragmentoQueNoCoincide() {
-        Evidence cita = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Importe aproximado");
+    @DisplayName("a fragment that does not match the line drops the result to Not verified")
+    void fragmentDoesNotMatch() {
+        Evidence citation = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Approximate amount");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, citation), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
-        assertThat(result.verificationNote()).contains("no coincide");
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
+        assertThat(result.verificationNote()).contains("does not match");
     }
 
     @Test
-    @DisplayName("citar el lado equivocado del diff degrada el resultado a No verificado")
-    void ladoEquivocado() {
-        Evidence cita = new Evidence("src/components/CartSummary.tsx", DiffSide.REMOVED, 20, "Total estimado");
+    @DisplayName("citing the wrong side of the diff drops the result to Not verified")
+    void wrongSide() {
+        Evidence citation = new Evidence("src/components/CartSummary.tsx", DiffSide.REMOVED, 20, "Estimated total");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, citation), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
     }
 
     @Test
-    @DisplayName("un veredicto concluyente sin cita no puede verificarse")
-    void sinCita() {
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, null), diff);
+    @DisplayName("a conclusive verdict with no citation cannot be verified")
+    void noCitation() {
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, null), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
-        assertThat(result.verificationNote()).contains("sin citar");
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
+        assertThat(result.verificationNote()).contains("without citing");
     }
 
     @Test
-    @DisplayName("No verificado sin cita se queda como está, sin nota de error")
-    void noVerificadoSinCita() {
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.UNVERIFIED, null), diff);
+    @DisplayName("Not verified with no citation stays as it is, with no error note")
+    void notVerifiedWithoutCitation() {
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.NOT_VERIFIED, null), diff);
 
-        assertThat(result.status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
         assertThat(result.evidence()).isNull();
         assertThat(result.verificationNote()).isNull();
     }
 
     @Test
-    @DisplayName("tolera que el modelo cite la ruta con el prefijo b/ del diff")
-    void toleraPrefijoDeRuta() {
-        Evidence cita = new Evidence("b/src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Total estimado");
+    @DisplayName("tolerates a path cited with the diff's b/ prefix")
+    void toleratesPathPrefix() {
+        Evidence citation = new Evidence("b/src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Estimated total");
 
-        CriterionResult result = verifier.verify("Criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("Criterion", verdict(ReviewStatus.MET, citation), diff);
 
         assertThat(result.status()).isEqualTo(ReviewStatus.MET);
     }
 
     @Test
-    @DisplayName("conserva siempre la explicación del modelo junto a la cita")
-    void conservaLaExplicacion() {
-        Evidence cita = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Total estimado");
+    @DisplayName("always keeps the model's explanation next to the citation")
+    void keepsTheExplanation() {
+        Evidence citation = new Evidence("src/components/CartSummary.tsx", DiffSide.ADDED, 20, "Estimated total");
 
-        CriterionResult result = verifier.verify("Mi criterio", verdict(ReviewStatus.MET, cita), diff);
+        CriterionResult result = verifier.verify("My criterion", verdict(ReviewStatus.MET, citation), diff);
 
-        assertThat(result.criterion()).isEqualTo("Mi criterio");
-        assertThat(result.explanation()).isEqualTo("La explicación del modelo.");
+        assertThat(result.criterion()).isEqualTo("My criterion");
+        assertThat(result.explanation()).isEqualTo("The model's explanation.");
     }
 }

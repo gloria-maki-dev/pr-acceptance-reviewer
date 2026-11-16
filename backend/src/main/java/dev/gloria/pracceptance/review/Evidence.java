@@ -3,7 +3,6 @@ package dev.gloria.pracceptance.review;
 import dev.gloria.pracceptance.diff.DiffSide;
 
 /**
- * La cita con la que el modelo respalda un veredicto: archivo, lado del diff, número de línea y el
- * fragmento de texto.
+ * The citation backing a verdict: file, side of the diff, line number and the snippet of text.
  */
 public record Evidence(String file, DiffSide side, int lineNumber, String snippet) {}

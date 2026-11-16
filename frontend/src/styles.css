@@ -1,9 +1,9 @@
 /*
- * Una herramienta de revisión, no una página de producto.
+ * A review tool, not a product page.
  *
- * La estructura la llevan reglas finas, no sombras ni tarjetas. El único sitio donde la pantalla
- * levanta la voz es la evidencia: cada cita se dibuja como la línea de diff que es, con su
- * medianil y su marcador, porque comprobarla es de lo que va todo esto.
+ * Structure comes from hairline rules, not shadows or cards. The one place this screen raises
+ * its voice is the evidence: every citation is drawn as the diff line it is, gutter and marker
+ * included, because checking it is what all of this is about.
  */
 
 :root {
@@ -20,8 +20,8 @@
   --met-wash: #eaf4ee;
   --not-met: #b02a3c;
   --not-met-wash: #fbebed;
-  --unverified: #8a6514;
-  --unverified-wash: #fbf2e1;
+  --not-verified: #8a6514;
+  --not-verified-wash: #fbf2e1;
 
   --added-wash: #e9f5ed;
   --removed-wash: #fcebed;
@@ -72,7 +72,7 @@ textarea.field__input--code {
   padding: 2.5rem 1.5rem 4rem;
 }
 
-/* --- Cabecera --------------------------------------------------------- */
+/* --- Masthead --------------------------------------------------------- */
 
 .masthead {
   border-bottom: 1px solid var(--rule-strong);
@@ -101,7 +101,7 @@ textarea.field__input--code {
   color: var(--ink);
 }
 
-/* --- Dos columnas ----------------------------------------------------- */
+/* --- Two columns ----------------------------------------------------- */
 
 .workbench {
   display: grid;
@@ -127,7 +127,7 @@ textarea.field__input--code {
   letter-spacing: -0.01em;
 }
 
-/* --- Formulario ------------------------------------------------------- */
+/* --- Form ------------------------------------------------------- */
 
 .field {
   display: flex;
@@ -172,7 +172,7 @@ textarea.field__input--code {
   color: var(--ink-muted);
 }
 
-/* --- Botones ---------------------------------------------------------- */
+/* --- Buttons ---------------------------------------------------------- */
 
 .actions {
   display: flex;
@@ -229,7 +229,7 @@ textarea.field__input--code {
   cursor: not-allowed;
 }
 
-/* --- Resultado -------------------------------------------------------- */
+/* --- Result -------------------------------------------------------- */
 
 .output {
   min-height: 12rem;
@@ -298,14 +298,14 @@ textarea.field__input--code {
 
 .output__model--warning {
   padding: 0.7rem 0.85rem;
-  border: 1px solid var(--unverified);
+  border: 1px solid var(--not-verified);
   border-radius: 4px;
-  background: var(--unverified-wash);
+  background: var(--not-verified-wash);
   color: #6d4f0f;
   max-width: 62ch;
 }
 
-/* --- Un criterio ------------------------------------------------------ */
+/* --- One criterion ------------------------------------------------------ */
 
 .result {
   background: var(--surface);
@@ -323,8 +323,8 @@ textarea.field__input--code {
   border-left-color: var(--not-met);
 }
 
-.result--unverified {
-  border-left-color: var(--unverified);
+.result--not_verified {
+  border-left-color: var(--not-verified);
 }
 
 .result__head {
@@ -369,9 +369,9 @@ textarea.field__input--code {
   color: var(--not-met);
 }
 
-.chip--unverified {
-  background: var(--unverified-wash);
-  color: var(--unverified);
+.chip--not_verified {
+  background: var(--not-verified-wash);
+  color: var(--not-verified);
 }
 
 .result__explanation {
@@ -389,12 +389,12 @@ textarea.field__input--code {
 
 .result__note {
   padding: 0.55rem 0.7rem;
-  background: var(--unverified-wash);
+  background: var(--not-verified-wash);
   border-radius: 2px;
   color: #6d4f0f;
 }
 
-/* --- La cita, dibujada como línea de diff ----------------------------- */
+/* --- The citation, drawn as a diff line ----------------------------- */
 
 .evidence {
   margin: 0;
@@ -473,7 +473,7 @@ textarea.field__input--code {
   white-space: pre;
 }
 
-/* --- Pantallas estrechas ---------------------------------------------- */
+/* --- Narrow screens ---------------------------------------------- */
 
 @media (max-width: 900px) {
   .page {

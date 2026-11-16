@@ -14,33 +14,33 @@ class ModelResponseParserTest {
 
     private final ModelResponseParser parser = new ModelResponseParser(new ObjectMapper());
 
-    private static final List<String> DOS = List.of("C1", "C2");
-    private static final List<String> UNO = List.of("C1");
+    private static final List<String> TWO = List.of("C1", "C2");
+    private static final List<String> ONE = List.of("C1");
 
-    private static final String VALIDA =
+    private static final String VALID =
             """
             {
               "results": [
                 {
                   "criterionId": "C1",
                   "status": "MET",
-                  "explanation": "El resumen del carrito pasa a decir «Total estimado».",
+                  "explanation": "El resumen del carrito pasa a decir «Estimated total».",
                   "evidence": {
                     "file": "src/components/CartSummary.tsx",
                     "side": "ADDED",
                     "lineNumber": 20,
-                    "snippet": "<span className=\\"cart-summary__label\\">Total estimado</span>"
+                    "snippet": "<span className=\\"cart-summary__label\\">Estimated total</span>"
                   }
                 },
                 {
                   "criterionId": "C2",
                   "status": "NOT_MET",
-                  "explanation": "El historial de pedidos también cambia.",
+                  "explanation": "Order history changes as well.",
                   "evidence": {
                     "file": "src/components/OrderHistory.tsx",
                     "side": "ADDED",
                     "lineNumber": 32,
-                    "snippet": "Total estimado:"
+                    "snippet": "Estimated total:"
                   }
                 }
               ]
@@ -48,9 +48,9 @@ class ModelResponseParserTest {
             """;
 
     @Test
-    @DisplayName("convierte una respuesta válida en un veredicto por identificador")
-    void respuestaValida() {
-        ParsedModelResponse parsed = parser.parse(VALIDA, DOS);
+    @DisplayName("turns a valid answer into one verdict per identifier")
+    void validAnswer() {
+        ParsedModelResponse parsed = parser.parse(VALID, TWO);
 
         assertThat(parsed.problems()).isEmpty();
         assertThat(parsed.verdicts()).containsOnlyKeys("C1", "C2");
@@ -61,206 +61,206 @@ class ModelResponseParserTest {
     }
 
     @Test
-    @DisplayName("el orden en que venga la respuesta da igual: cada veredicto va a su identificador")
-    void elOrdenDaIgual() {
+    @DisplayName("the order of the answer does not matter: each verdict goes to its identifier")
+    void orderDoesNotMatter() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C2","status":"UNVERIFIED","explanation":"Segundo","evidence":null},
-                  {"criterionId":"C1","status":"MET","explanation":"Primero","evidence":null}
+                  {"criterionId":"C2","status":"NOT_VERIFIED","explanation":"Second","evidence":null},
+                  {"criterionId":"C1","status":"MET","explanation":"First","evidence":null}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
-        assertThat(parsed.verdicts().get("C1").explanation()).isEqualTo("Primero");
-        assertThat(parsed.verdicts().get("C2").explanation()).isEqualTo("Segundo");
+        assertThat(parsed.verdicts().get("C1").explanation()).isEqualTo("First");
+        assertThat(parsed.verdicts().get("C2").explanation()).isEqualTo("Second");
     }
 
     @Test
-    @DisplayName("una respuesta a la que le falta un criterio conserva los demás")
-    void respuestaParcial() {
+    @DisplayName("an answer missing a criterion keeps the others")
+    void partialAnswer() {
         String json = """
-                {"results":[{"criterionId":"C1","status":"MET","explanation":"Sí."}]}
+                {"results":[{"criterionId":"C1","status":"MET","explanation":"Yes."}]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
         assertThat(parsed.verdicts()).containsOnlyKeys("C1");
         assertThat(parsed.problems()).isEmpty();
     }
 
     @Test
-    @DisplayName("un veredicto mal formado no arrastra a los demás, y se anota por qué")
-    void unVeredictoMalFormado() {
+    @DisplayName("a malformed verdict does not drag the others down, and the reason is recorded")
+    void oneMalformedVerdict() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Sí.",
+                  {"criterionId":"C1","status":"MET","explanation":"Yes.",
                    "evidence":{"file":"a.tsx","side":"ADDED","snippet":"x"}},
                   {"criterionId":"C2","status":"NOT_MET","explanation":"No."}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
         assertThat(parsed.verdicts()).containsOnlyKeys("C2");
         assertThat(parsed.problems().get("C1")).contains("lineNumber");
     }
 
     @Test
-    @DisplayName("dos veredictos para el mismo criterio dejan ese criterio sin veredicto")
-    void identificadorRepetido() {
+    @DisplayName("two verdicts for the same criterion leave that criterion without one")
+    void repeatedIdentifier() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Sí."},
+                  {"criterionId":"C1","status":"MET","explanation":"Yes."},
                   {"criterionId":"C1","status":"NOT_MET","explanation":"Pues no."},
-                  {"criterionId":"C2","status":"MET","explanation":"Este sí."}
+                  {"criterionId":"C2","status":"MET","explanation":"This one yes."}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
         assertThat(parsed.verdicts()).containsOnlyKeys("C2");
-        assertThat(parsed.problems().get("C1")).contains("más de un veredicto");
+        assertThat(parsed.problems().get("C1")).contains("more than one verdict");
     }
 
     @Test
-    @DisplayName("se ignora un veredicto con un identificador que no se pidió")
-    void identificadorInventado() {
+    @DisplayName("a verdict with an identifier that was not asked for is ignored")
+    void inventedIdentifier() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C9","status":"MET","explanation":"De otro ticket."},
-                  {"criterionId":"C1","status":"MET","explanation":"De este."}
+                  {"criterionId":"C9","status":"MET","explanation":"From another ticket."},
+                  {"criterionId":"C1","status":"MET","explanation":"From this one."}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, UNO);
+        ParsedModelResponse parsed = parser.parse(json, ONE);
 
         assertThat(parsed.verdicts()).containsOnlyKeys("C1");
-        assertThat(parsed.verdicts().get("C1").explanation()).isEqualTo("De este.");
+        assertThat(parsed.verdicts().get("C1").explanation()).isEqualTo("From this one.");
     }
 
     @Test
-    @DisplayName("tolera que el modelo devuelva el número en vez del identificador")
-    void numeroEnVezDeIdentificador() {
+    @DisplayName("tolerates the model returning the number instead of the identifier")
+    void numberInsteadOfIdentifier() {
         String json = """
-                {"results":[{"criterionIndex":2,"status":"MET","explanation":"Sí."}]}
+                {"results":[{"criterionIndex":2,"status":"MET","explanation":"Yes."}]}
                 """;
 
-        assertThat(parser.parse(json, DOS).verdicts()).containsOnlyKeys("C2");
+        assertThat(parser.parse(json, TWO).verdicts()).containsOnlyKeys("C2");
     }
 
     @Test
-    @DisplayName("acepta un veredicto sin evidencia")
-    void sinEvidencia() {
+    @DisplayName("accepts a verdict with no evidence")
+    void withoutEvidence() {
         String json = """
-                {"results":[{"criterionId":"C1","status":"UNVERIFIED","explanation":"El diff no lo muestra."}]}
+                {"results":[{"criterionId":"C1","status":"NOT_VERIFIED","explanation":"The diff does not show it."}]}
                 """;
 
-        assertThat(parser.parse(json, UNO).verdicts().get("C1").evidence()).isNull();
+        assertThat(parser.parse(json, ONE).verdicts().get("C1").evidence()).isNull();
     }
 
     @Test
-    @DisplayName("extrae el JSON aunque venga envuelto en un bloque de código")
-    void jsonEnvuelto() {
+    @DisplayName("extracts the JSON even when it arrives in a code fence")
+    void fencedJson() {
         String json = "```json\n{\"results\":[{\"criterionId\":\"C1\",\"status\":\"MET\",\"explanation\":\"Sí.\"}]}\n```";
 
-        assertThat(parser.parse(json, UNO).verdicts()).hasSize(1);
+        assertThat(parser.parse(json, ONE).verdicts()).hasSize(1);
     }
 
     @Test
-    @DisplayName("acepta un JSON válido precedido de prosa con llaves")
-    void prosaConLlavesDelante() {
-        String json = "El objeto {results} que devuelvo:\n"
+    @DisplayName("accepts valid JSON preceded by prose containing braces")
+    void proseWithBracesInFront() {
+        String json = "The {results} object I return:\n"
                 + "{\"results\":[{\"criterionId\":\"C1\",\"status\":\"MET\",\"explanation\":\"Sí.\"}]}";
 
-        assertThat(parser.parse(json, UNO).verdicts()).hasSize(1);
+        assertThat(parser.parse(json, ONE).verdicts()).hasSize(1);
     }
 
     @Test
-    @DisplayName("rechaza una respuesta que no es JSON")
-    void noEsJson() {
-        assertThatThrownBy(() -> parser.parse("Lo siento, no puedo revisar este diff.", UNO))
+    @DisplayName("rejects an answer that is not JSON")
+    void notJson() {
+        assertThatThrownBy(() -> parser.parse("Sorry, I cannot review this diff.", ONE))
                 .isInstanceOf(ModelResponseException.class)
                 .hasMessageContaining("JSON");
     }
 
     @Test
-    @DisplayName("rechaza un JSON truncado")
-    void jsonTruncado() {
-        assertThatThrownBy(() -> parser.parse("{\"results\":[{\"criterionId\":\"C1\",", UNO))
+    @DisplayName("rejects truncated JSON")
+    void truncatedJson() {
+        assertThatThrownBy(() -> parser.parse("{\"results\":[{\"criterionId\":\"C1\",", ONE))
                 .isInstanceOf(ModelResponseException.class);
     }
 
     @Test
-    @DisplayName("rechaza una respuesta con dos objetos en vez de quedarse con el primero")
-    void dosRespuestas() {
+    @DisplayName("rejects an answer with two objects instead of taking the first")
+    void twoAnswers() {
         String json = "{\"results\":[{\"criterionId\":\"C1\",\"status\":\"MET\",\"explanation\":\"Borrador.\"}]}"
                 + " {\"results\":[{\"criterionId\":\"C1\",\"status\":\"NOT_MET\",\"explanation\":\"Corregido.\"}]}";
 
-        assertThatThrownBy(() -> parser.parse(json, UNO))
+        assertThatThrownBy(() -> parser.parse(json, ONE))
                 .isInstanceOf(ModelResponseException.class)
-                .hasMessageContaining("2 respuestas");
+                .hasMessageContaining("2 different answers");
     }
 
     @Test
-    @DisplayName("falla solo cuando no queda ni un veredicto en pie")
-    void ningunVeredictoUtilizable() {
+    @DisplayName("fails only when no verdict is left standing")
+    void noUsableVerdict() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"QUIZA","explanation":"Pues no sé."},
+                  {"criterionId":"C1","status":"MAYBE","explanation":"Who knows."},
                   {"criterionId":"C2","status":"MET","explanation":"   "}
                 ]}
                 """;
 
-        assertThatThrownBy(() -> parser.parse(json, DOS))
+        assertThatThrownBy(() -> parser.parse(json, TWO))
                 .isInstanceOf(ModelResponseException.class)
-                .hasMessageContaining("ningún veredicto utilizable");
+                .hasMessageContaining("no usable verdict");
     }
 
     @Test
-    @DisplayName("un estado desconocido solo tumba a su criterio, y se dice cuál era")
-    void estadoDesconocido() {
+    @DisplayName("an unknown status only sinks its own criterion, and says which it was")
+    void unknownStatus() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"QUIZA","explanation":"Pues no sé."},
-                  {"criterionId":"C2","status":"MET","explanation":"Este sí."}
+                  {"criterionId":"C1","status":"MAYBE","explanation":"Who knows."},
+                  {"criterionId":"C2","status":"MET","explanation":"This one yes."}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
         assertThat(parsed.verdicts()).containsOnlyKeys("C2");
-        assertThat(parsed.problems().get("C1")).contains("QUIZA");
+        assertThat(parsed.problems().get("C1")).contains("MAYBE");
     }
 
     @Test
-    @DisplayName("un lado del diff desconocido solo tumba a su criterio")
-    void ladoDesconocido() {
+    @DisplayName("an unknown diff side only sinks its own criterion")
+    void unknownSide() {
         String json =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Sí.",
-                   "evidence":{"file":"a.tsx","side":"ARRIBA","lineNumber":3,"snippet":"x"}},
-                  {"criterionId":"C2","status":"MET","explanation":"Este sí."}
+                  {"criterionId":"C1","status":"MET","explanation":"Yes.",
+                   "evidence":{"file":"a.tsx","side":"UPWARDS","lineNumber":3,"snippet":"x"}},
+                  {"criterionId":"C2","status":"MET","explanation":"This one yes."}
                 ]}
                 """;
 
-        ParsedModelResponse parsed = parser.parse(json, DOS);
+        ParsedModelResponse parsed = parser.parse(json, TWO);
 
-        assertThat(parsed.problems().get("C1")).contains("ARRIBA");
+        assertThat(parsed.problems().get("C1")).contains("UPWARDS");
         assertThat(parsed.verdicts()).containsOnlyKeys("C2");
     }
 
     @Test
-    @DisplayName("rechaza una respuesta sin la lista «results»")
-    void sinResults() {
-        assertThatThrownBy(() -> parser.parse("{\"veredictos\":[]}", UNO))
+    @DisplayName("rejects an answer with no `results` list")
+    void withoutResults() {
+        assertThatThrownBy(() -> parser.parse("{\"verdicts\":[]}", ONE))
                 .isInstanceOf(ModelResponseException.class);
     }
 }

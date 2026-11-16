@@ -1,0 +1,2 @@
+Change the text "Total" to "Estimated total" in the cart summary.
+Keep the change to the cart summary only. Order history must still show "Total".

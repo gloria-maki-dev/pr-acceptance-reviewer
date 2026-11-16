@@ -1,7 +1,7 @@
-/** Los tres veredictos posibles. Coinciden con el enum del backend. */
-export type ReviewStatus = 'MET' | 'NOT_MET' | 'UNVERIFIED';
+/** The three possible verdicts. These match the backend enum. */
+export type ReviewStatus = 'MET' | 'NOT_MET' | 'NOT_VERIFIED';
 
-/** Lado del diff al que apunta una cita. */
+/** The side of the diff a citation points at. */
 export type DiffSide = 'ADDED' | 'REMOVED' | 'CONTEXT';
 
 export interface Evidence {
@@ -14,35 +14,36 @@ export interface Evidence {
 export interface CriterionResult {
   criterion: string;
   status: ReviewStatus;
-  /** Null cuando el modelo no llegó a dar un veredicto para este criterio. */
+  /** Null when the model never returned a verdict for this criterion. */
   explanation: string | null;
+  /** The model's citation, or null if it cited nothing. */
   evidence: Evidence | null;
-  /** Por qué no se pudo verificar la cita. Null cuando todo cuadró. */
+  /** Why the citation could not be verified. Null when it held up. */
   verificationNote: string | null;
 }
 
 export interface ReviewResponse {
   results: CriterionResult[];
   model: string;
-  /** Quién atendió la petición: «API de Claude», o lo que haya en su lugar. */
+  /** Who answered the request: "Anthropic API", or whatever stood in for it. */
   provider: string;
-  /** false si la respuesta no vino de la API de Claude. */
+  /** false when the answer did not come from the Anthropic API. */
   officialProvider: boolean;
 }
 
 export const STATUS_LABEL: Record<ReviewStatus, string> = {
-  MET: 'Cumplido',
-  NOT_MET: 'No cumplido',
-  UNVERIFIED: 'No verificado',
+  MET: 'Met',
+  NOT_MET: 'Not met',
+  NOT_VERIFIED: 'Not verified',
 };
 
 export const SIDE_LABEL: Record<DiffSide, string> = {
-  ADDED: 'línea añadida',
-  REMOVED: 'línea eliminada',
-  CONTEXT: 'línea de contexto',
+  ADDED: 'added line',
+  REMOVED: 'removed line',
+  CONTEXT: 'context line',
 };
 
-/** El marcador con el que esa línea aparece en el diff. */
+/** The marker this line carries in the diff. */
 export const SIDE_MARKER: Record<DiffSide, string> = {
   ADDED: '+',
   REMOVED: '-',

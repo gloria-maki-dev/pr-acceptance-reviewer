@@ -1,6 +1,6 @@
 import type { ReviewResponse } from './types';
 
-/** Un error que ya trae un mensaje pensado para enseñar en la pantalla. */
+/** An error that already carries a message meant to be shown on screen. */
 export class ReviewError extends Error {}
 
 interface ApiErrorBody {
@@ -8,10 +8,10 @@ interface ApiErrorBody {
 }
 
 /**
- * Manda la revisión al backend.
+ * Sends the review to the backend.
  *
- * <p>La llamada sale siempre contra el mismo origen: en desarrollo, Vite hace de proxy hacia el
- * backend, así que la credencial del modelo no pasa nunca por el navegador.
+ * The call always goes to the same origin: in development Vite proxies it to the backend, so the
+ * model credential never passes through the browser.
  */
 export async function reviewPullRequest(
   acceptanceCriteria: string[],
@@ -31,12 +31,12 @@ export async function reviewPullRequest(
       throw cause;
     }
     throw new ReviewError(
-      'No llego al backend. Arráncalo con «mvn spring-boot:run» en la carpeta backend/.',
+      'Cannot reach the backend. Start it with `mvn spring-boot:run` in the backend/ folder.',
     );
   }
 
-  // Si la petición se cancela entre las cabeceras y el cuerpo, json() rechaza con AbortError:
-  // tragárselo convertiría una cancelación en un error falso en pantalla.
+  // If the request is aborted between the headers and the body, json() rejects with AbortError.
+  // Swallowing it would turn a cancellation into a bogus error on screen.
   let body: unknown = null;
   try {
     body = await response.json();
@@ -49,17 +49,17 @@ export async function reviewPullRequest(
 
   if (!response.ok) {
     const message = (body as ApiErrorBody | null)?.error;
-    throw new ReviewError(message ?? `El servidor respondió ${response.status}.`);
+    throw new ReviewError(message ?? `The server responded ${response.status}.`);
   }
 
   const parsed = body as ReviewResponse | null;
   if (!parsed || !Array.isArray(parsed.results)) {
-    throw new ReviewError('El servidor devolvió una respuesta que no entiendo.');
+    throw new ReviewError('The server returned an answer we cannot read.');
   }
   return parsed;
 }
 
-/** Un criterio por línea; las líneas vacías no cuentan. */
+/** One criterion per line; blank lines do not count. */
 export function parseCriteria(text: string): string[] {
   return text
     .split('\n')

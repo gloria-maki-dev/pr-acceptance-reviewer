@@ -7,17 +7,17 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * Interpreta un diff unificado (la salida de {@code git diff}) y sitúa cada línea en su archivo,
- * su lado y su número de línea.
+ * Reads a unified diff (the output of {@code git diff}) and places every line in its file, its
+ * side and its line number.
  *
- * <p>La cabecera de cada fragmento declara cuántas líneas trae de cada lado, y este parser lleva
- * la cuenta. Eso no es un detalle: dentro de un fragmento, una línea eliminada cuyo contenido
- * empiece por {@code -- } (un comentario de SQL, por ejemplo) se escribe {@code --- …} y es
- * idéntica a una cabecera de archivo. Sin llevar la cuenta, el resto del fragmento se perdería en
- * silencio y un criterio del tipo «esto no debe cambiar» saldría Cumplido sobre un diff mutilado.
+ * <p>Each hunk header declares how many lines it contributes per side, and this parser counts
+ * them down. That is not a detail: inside a hunk, a removed line whose content starts with
+ * {@code -- } (a SQL comment, say) is written {@code --- ...} and is indistinguishable from a
+ * file header. Without the countdown the rest of the hunk would be dropped in silence, and a
+ * criterion of the "this must not change" kind would come back Met over a mutilated diff.
  *
- * <p>Es tolerante con lo que rodea a los cambios —cabeceras de {@code git}, modos, índices— y
- * estricto con lo que importa: si no encuentra ni un archivo con cambios, falla.
+ * <p>It is tolerant of whatever surrounds the changes - {@code git} headers, file modes, index
+ * lines - and strict about what matters: if it finds no changed file at all, it fails.
  */
 @Component
 public class DiffParser {
@@ -27,7 +27,7 @@ public class DiffParser {
 
     public ParsedDiff parse(String rawDiff) {
         if (rawDiff == null || rawDiff.isBlank()) {
-            throw new InvalidDiffException("El diff está vacío.");
+            throw new InvalidDiffException("The diff is empty.");
         }
 
         List<DiffFile> files = new ArrayList<>();
@@ -39,8 +39,8 @@ public class DiffParser {
         int newRemaining = 0;
 
         String[] rawLines = rawDiff.split("\n", -1);
-        // Un archivo que termina en salto de línea deja un último elemento vacío que no es
-        // ninguna línea del diff; si lo tomáramos en serio, inventaríamos una línea de contexto.
+        // A file ending in a newline leaves a trailing empty element that is not a line of the
+        // diff; taking it seriously would invent a context line.
         int lineCount = rawLines.length;
         if (lineCount > 0 && rawLines[lineCount - 1].isEmpty()) {
             lineCount--;
@@ -59,7 +59,7 @@ public class DiffParser {
                 }
 
                 if (line.startsWith("--- ")) {
-                    // Empieza un archivo nuevo, aunque no haya cabecera «diff --git».
+                    // A new file starts here, even without a "diff --git" header.
                     flush(files, currentPath, currentLines);
                     currentLines = new ArrayList<>();
                     String oldPath = stripPathPrefix(line.substring(4));
@@ -68,7 +68,7 @@ public class DiffParser {
                 }
 
                 if (line.startsWith("+++ ")) {
-                    // En un borrado, «+++ /dev/null» deja en pie la ruta del lado antiguo.
+                    // On a deletion, "+++ /dev/null" leaves the old side's path standing.
                     String newPath = stripPathPrefix(line.substring(4));
                     if (!isDevNull(newPath)) {
                         currentPath = newPath;
@@ -83,12 +83,12 @@ public class DiffParser {
                     newLine = Integer.parseInt(hunk.group(3));
                     newRemaining = hunk.group(4) == null ? 1 : Integer.parseInt(hunk.group(4));
                 }
-                // Cualquier otra cosa fuera de un fragmento (index, modos, texto suelto) se ignora.
+                // Anything else outside a hunk (index, modes, loose text) is ignored.
                 continue;
             }
 
             if (line.startsWith("\\")) {
-                // «\ No newline at end of file»: no es una línea del archivo y no gasta cupo.
+                // "\ No newline at end of file" is not a line of the file and spends no budget.
                 continue;
             }
 
@@ -99,14 +99,14 @@ public class DiffParser {
                 addLine(currentLines, currentPath, DiffSide.REMOVED, oldLine++, line.substring(1));
                 oldRemaining = Math.max(0, oldRemaining - 1);
             } else if (line.startsWith(" ") || line.isEmpty()) {
-                // Una línea en blanco dentro de un fragmento es una línea de contexto vacía.
+                // A blank line inside a hunk is an empty context line.
                 String content = line.isEmpty() ? "" : line.substring(1);
                 addLine(currentLines, currentPath, DiffSide.CONTEXT, newLine++, content);
                 oldLine++;
                 oldRemaining = Math.max(0, oldRemaining - 1);
                 newRemaining = Math.max(0, newRemaining - 1);
             } else {
-                // Basura donde debería haber una línea del fragmento: damos el fragmento por cerrado.
+                // Junk where a hunk line should be: treat the hunk as closed.
                 oldRemaining = 0;
                 newRemaining = 0;
             }
@@ -116,8 +116,8 @@ public class DiffParser {
 
         if (files.isEmpty()) {
             throw new InvalidDiffException(
-                    "No reconozco ningún archivo con cambios. Pega la salida de «git diff», "
-                            + "con sus cabeceras «--- a/archivo», «+++ b/archivo» y «@@».");
+                    "No changed files found. Paste the output of `git diff`, including its "
+                            + "`--- a/file`, `+++ b/file` and `@@` headers.");
         }
         return new ParsedDiff(files);
     }
@@ -129,11 +129,11 @@ public class DiffParser {
     }
 
     /**
-     * Cierra el archivo en curso.
+     * Closes the file currently being read.
      *
-     * <p>Si esa misma ruta ya apareció antes —dos commits pegados, un {@code git log -p}— se
-     * juntan las líneas en un solo archivo. Si se guardaran por separado, solo se podría verificar
-     * una cita al primer bloque, y una cita correcta al segundo se rechazaría.
+     * <p>If that same path appeared before - two commits pasted together, a {@code git log -p} -
+     * the lines are merged into a single file. Kept apart, only a citation to the first block
+     * could be verified, and a correct citation to the second one would be rejected.
      */
     private static void flush(List<DiffFile> files, String path, List<DiffLine> lines) {
         if (path == null || lines.isEmpty()) {
@@ -157,7 +157,7 @@ public class DiffParser {
     }
 
     private static String pathFromGitHeader(String header) {
-        // diff --git a/ruta b/ruta
+        // diff --git a/path b/path
         String rest = header.substring("diff --git ".length()).strip();
         int split = rest.lastIndexOf(" b/");
         if (split > 0) {
@@ -168,13 +168,13 @@ public class DiffParser {
 
     private static String stripPathPrefix(String rawPath) {
         String path = rawPath.strip();
-        // Las cabeceras pueden traer un tabulador con la marca de tiempo detrás de la ruta.
+        // Headers may carry a tab and a timestamp after the path.
         int tab = path.indexOf('\t');
         if (tab >= 0) {
             path = path.substring(0, tab).strip();
         }
         if (path.length() >= 2 && path.startsWith("\"") && path.endsWith("\"")) {
-            // git entrecomilla las rutas con caracteres no ASCII cuando core.quotePath está activo.
+            // git quotes paths with non-ASCII characters when core.quotePath is on.
             path = unquoteGitPath(path.substring(1, path.length() - 1));
         }
         if (path.startsWith("a/") || path.startsWith("b/")) {
@@ -183,7 +183,7 @@ public class DiffParser {
         return path;
     }
 
-    /** Deshace los escapes octales con los que git entrecomilla una ruta. */
+    /** Undoes the octal escaping git applies to a quoted path. */
     private static String unquoteGitPath(String quoted) {
         java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
         for (int i = 0; i < quoted.length(); i++) {

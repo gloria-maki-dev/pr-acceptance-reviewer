@@ -2,7 +2,7 @@ package dev.gloria.pracceptance.diff;
 
 import java.util.List;
 
-/** Los cambios de un archivo dentro del diff. */
+/** The changes to one file within the diff. */
 public record DiffFile(String path, List<DiffLine> lines) {
 
     public DiffFile {

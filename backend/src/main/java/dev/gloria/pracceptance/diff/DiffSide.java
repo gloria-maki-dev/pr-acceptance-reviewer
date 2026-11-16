@@ -1,11 +1,11 @@
 package dev.gloria.pracceptance.diff;
 
-/** Lado del diff al que pertenece una línea. */
+/** Which side of the diff a line belongs to. */
 public enum DiffSide {
-    /** Línea añadida (prefijo {@code +}); se numera con el archivo nuevo. */
+    /** An added line ({@code +} prefix); numbered against the new file. */
     ADDED,
-    /** Línea eliminada (prefijo {@code -}); se numera con el archivo antiguo. */
+    /** A removed line ({@code -} prefix); numbered against the old file. */
     REMOVED,
-    /** Línea de contexto, igual en los dos lados; se numera con el archivo nuevo. */
+    /** A context line, identical on both sides; numbered against the new file. */
     CONTEXT
 }

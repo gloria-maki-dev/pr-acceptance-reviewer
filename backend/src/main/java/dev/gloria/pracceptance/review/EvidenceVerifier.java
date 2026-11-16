@@ -10,43 +10,43 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * Comprueba la cita del modelo contra el diff de verdad.
+ * Checks the model's citation against the real diff.
  *
- * <p>Esta clase es la que hace que el resultado sea comprobable. Un veredicto concluyente —Cumplido
- * o No cumplido— solo sobrevive si su cita apunta a una línea que existe, en el archivo y el lado
- * que dice, y cuyo texto contiene el fragmento citado. Si algo no cuadra, el veredicto baja a
- * {@link ReviewStatus#UNVERIFIED} con una nota que explica qué falló.
+ * <p>This class is what makes the result checkable. A conclusive verdict - Met or Not met - only
+ * survives if its citation points at a line that exists, on the file and side it claims, whose
+ * text contains the quoted snippet. When something does not line up the verdict drops to
+ * {@link ReviewStatus#NOT_VERIFIED} with a note explaining what failed.
  *
- * <p>La explicación y la cita se conservan en el resultado para que la interfaz pueda decidir qué
- * enseñar; cuando hay nota, lo correcto es ocultarlas, porque la explicación se apoyaba en una
- * cita que no se sostiene.
+ * <p>The explanation and the citation are kept on the result so the interface can decide what to
+ * show; when there is a note, the right move is to hide both, because the explanation rested on
+ * a citation that does not hold up.
  */
 @Component
 public class EvidenceVerifier {
 
     /**
-     * Un fragmento más corto que esto no distingue nada: citar «;» sostendría cualquier veredicto
-     * sobre casi cualquier línea de código.
+     * A snippet shorter than this distinguishes nothing: citing ";" would support any verdict at
+     * all over almost any line of code.
      */
     private static final int MIN_SNIPPET_LENGTH = 4;
 
-    /** La anotación con la que el prompt le enseña el diff al modelo: «[ADDED 20] ». */
+    /** The annotation the prompt uses to show the diff to the model: "[ADDED 20] ". */
     private static final Pattern ANNOTATION = Pattern.compile("^\\[(?:ADDED|REMOVED|CONTEXT) \\d+]\\s?");
 
-    /** Espacios de todo tipo, incluido el espacio duro U+00A0 que aparece en JSX. */
+    /** Whitespace of every kind, including the no-break space that turns up in JSX. */
     private static final Pattern WHITESPACE = Pattern.compile("[\\s\\p{Z}]+");
 
     public CriterionResult verify(String criterion, ModelVerdict verdict, ParsedDiff diff) {
         Evidence evidence = verdict.evidence();
 
         if (evidence == null) {
-            if (verdict.status() == ReviewStatus.UNVERIFIED) {
-                return new CriterionResult(criterion, ReviewStatus.UNVERIFIED, verdict.explanation(), null, null);
+            if (verdict.status() == ReviewStatus.NOT_VERIFIED) {
+                return new CriterionResult(criterion, ReviewStatus.NOT_VERIFIED, verdict.explanation(), null, null);
             }
             return unverified(
                     criterion,
                     verdict,
-                    "El modelo concluyó sin citar ninguna línea del diff, así que no hay nada que comprobar.");
+                    "The model concluded without citing any line of the diff, so there is nothing to check.");
         }
 
         Optional<DiffFile> file = diff.file(evidence.file());
@@ -54,7 +54,7 @@ public class EvidenceVerifier {
             return unverified(
                     criterion,
                     verdict,
-                    "El diff no contiene el archivo «" + evidence.file() + "» que cita el modelo.");
+                    "The diff does not contain the file `" + evidence.file() + "` the model cites.");
         }
 
         List<DiffLine> candidates = file.get().lines().stream()
@@ -64,8 +64,8 @@ public class EvidenceVerifier {
             return unverified(
                     criterion,
                     verdict,
-                    "En «" + file.get().path() + "» no hay ninguna línea " + evidence.lineNumber()
-                            + " del lado " + evidence.side() + " en este diff.");
+                    "`" + file.get().path() + "` has no " + evidence.side() + " line "
+                            + evidence.lineNumber() + " in this diff.");
         }
 
         String snippet = normalise(stripMarkers(evidence.snippet()));
@@ -73,8 +73,8 @@ public class EvidenceVerifier {
             return unverified(
                     criterion,
                     verdict,
-                    "El fragmento citado («" + evidence.snippet().strip()
-                            + "») es demasiado corto para demostrar nada.");
+                    "The snippet cited (`" + evidence.snippet().strip()
+                            + "`) is too short to prove anything.");
         }
 
         boolean matches = candidates.stream().anyMatch(l -> normalise(l.content()).contains(snippet));
@@ -82,8 +82,8 @@ public class EvidenceVerifier {
             return unverified(
                     criterion,
                     verdict,
-                    "El fragmento citado no coincide con la línea " + evidence.lineNumber() + " de «"
-                            + file.get().path() + "», que dice: " + candidates.get(0).content().strip());
+                    "The snippet does not match line " + evidence.lineNumber() + " of `"
+                            + file.get().path() + "`, which reads: " + candidates.get(0).content().strip());
         }
 
         return new CriterionResult(criterion, verdict.status(), verdict.explanation(), evidence, null);
@@ -91,13 +91,13 @@ public class EvidenceVerifier {
 
     private static CriterionResult unverified(String criterion, ModelVerdict verdict, String note) {
         return new CriterionResult(
-                criterion, ReviewStatus.UNVERIFIED, verdict.explanation(), verdict.evidence(), note);
+                criterion, ReviewStatus.NOT_VERIFIED, verdict.explanation(), verdict.evidence(), note);
     }
 
     /**
-     * El modelo puede citar la línea entera o solo un trozo, con otra sangría, con el prefijo
-     * {@code +}/{@code -} del diff, o con la anotación {@code [ADDED 20]} con la que se la
-     * enseñamos. Nada de eso debería invalidar una cita por lo demás correcta.
+     * The model may quote a whole line or a fragment of one, with different indentation, with the
+     * diff's {@code +}/{@code -} prefix, or with the {@code [ADDED 20]} annotation it was shown.
+     * None of that should invalidate an otherwise correct citation.
      */
     private static String stripMarkers(String snippet) {
         String trimmed = ANNOTATION.matcher(snippet.strip()).replaceFirst("").strip();

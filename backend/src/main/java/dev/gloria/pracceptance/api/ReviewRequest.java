@@ -6,19 +6,19 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Lo que manda la pantalla: los criterios de aceptación y el diff.
+ * What the screen sends: the acceptance criteria and the diff.
  *
- * <p>Los topes no son decorativos: evitan mandarle al modelo un diff de medio repositorio por un
- * pegado accidental.
+ * <p>The limits are not decoration: they stop an accidental paste from sending half a repository
+ * to the model.
  */
 public record ReviewRequest(
-        @NotEmpty(message = "Hace falta al menos un criterio de aceptación.")
-                @Size(max = 20, message = "Como mucho 20 criterios por revisión.")
+        @NotEmpty(message = "At least one acceptance criterion is required.")
+                @Size(max = 20, message = "At most 20 criteria per review.")
                 List<
-                                @NotBlank(message = "Hay un criterio vacío.")
-                                @Size(max = 1000, message = "Un criterio no puede pasar de 1000 caracteres.")
+                                @NotBlank(message = "One of the criteria is empty.")
+                                @Size(max = 1000, message = "A criterion cannot exceed 1000 characters.")
                                 String>
                         acceptanceCriteria,
-        @NotBlank(message = "Hace falta pegar el diff.")
-                @Size(max = 200_000, message = "El diff no puede pasar de 200 000 caracteres.")
+        @NotBlank(message = "The diff is required.")
+                @Size(max = 200_000, message = "The diff cannot exceed 200,000 characters.")
                 String diff) {}

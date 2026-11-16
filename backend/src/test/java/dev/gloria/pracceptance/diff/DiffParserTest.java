@@ -13,9 +13,9 @@ class DiffParserTest {
     private final DiffParser parser = new DiffParser();
 
     @Test
-    @DisplayName("separa los archivos del diff y conserva su ruta")
-    void separaLosArchivos() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.brokenDiff());
+    @DisplayName("separates the files of the diff and keeps their paths")
+    void separatesFiles() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffWithBug());
 
         assertThat(diff.files())
                 .extracting(DiffFile::path)
@@ -23,83 +23,79 @@ class DiffParserTest {
     }
 
     @Test
-    @DisplayName("numera las líneas añadidas con la numeración del archivo nuevo")
-    void numeraLasLineasAnadidas() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.brokenDiff());
+    @DisplayName("numbers added lines against the new file")
+    void numbersAddedLines() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffWithBug());
 
         DiffFile cart = diff.file("src/components/CartSummary.tsx").orElseThrow();
-        List<DiffLine> anadidas = cart.lines().stream().filter(l -> l.side() == DiffSide.ADDED).toList();
+        List<DiffLine> added = cart.lines().stream().filter(l -> l.side() == DiffSide.ADDED).toList();
 
-        assertThat(anadidas).hasSize(1);
-        assertThat(anadidas.get(0).lineNumber()).isEqualTo(20);
-        assertThat(anadidas.get(0).content()).contains("Total estimado");
+        assertThat(added).hasSize(1);
+        assertThat(added.get(0).lineNumber()).isEqualTo(20);
+        assertThat(added.get(0).content()).contains("Estimated total");
     }
 
     @Test
-    @DisplayName("numera las líneas eliminadas con la numeración del archivo antiguo")
-    void numeraLasLineasEliminadas() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.brokenDiff());
+    @DisplayName("numbers removed lines against the old file")
+    void numbersRemovedLines() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffWithBug());
 
         DiffFile cart = diff.file("src/components/CartSummary.tsx").orElseThrow();
-        List<DiffLine> eliminadas = cart.lines().stream().filter(l -> l.side() == DiffSide.REMOVED).toList();
+        List<DiffLine> removed = cart.lines().stream().filter(l -> l.side() == DiffSide.REMOVED).toList();
 
-        assertThat(eliminadas).hasSize(1);
-        assertThat(eliminadas.get(0).lineNumber()).isEqualTo(20);
-        assertThat(eliminadas.get(0).content()).contains(">Total<");
+        assertThat(removed).hasSize(1);
+        assertThat(removed.get(0).lineNumber()).isEqualTo(20);
+        assertThat(removed.get(0).content()).contains(">Total<");
     }
 
     @Test
-    @DisplayName("avanza la numeración de ambos lados en las líneas de contexto")
-    void numeraElContexto() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.brokenDiff());
+    @DisplayName("advances both sides on context lines")
+    void numbersContext() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffWithBug());
 
-        DiffFile historial = diff.file("src/components/OrderHistory.tsx").orElseThrow();
-        List<DiffLine> contexto = historial.lines().stream().filter(l -> l.side() == DiffSide.CONTEXT).toList();
+        DiffFile history = diff.file("src/components/OrderHistory.tsx").orElseThrow();
+        List<DiffLine> context = history.lines().stream().filter(l -> l.side() == DiffSide.CONTEXT).toList();
 
-        assertThat(contexto).hasSize(4);
-        assertThat(contexto.get(0).lineNumber()).isEqualTo(31);
-        assertThat(contexto.get(1).lineNumber()).isEqualTo(33);
-        assertThat(contexto.get(2).lineNumber()).isEqualTo(34);
-        assertThat(contexto.get(3).lineNumber()).isEqualTo(35);
+        assertThat(context).hasSize(4);
+        assertThat(context).extracting(DiffLine::lineNumber).containsExactly(31, 33, 34, 35);
     }
 
     @Test
-    @DisplayName("la línea añadida del historial de pedidos es la 32")
-    void lineaAnadidaDelHistorial() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.brokenDiff());
+    @DisplayName("the added line in order history is line 32")
+    void addedLineInOrderHistory() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffWithBug());
 
-        DiffFile historial = diff.file("src/components/OrderHistory.tsx").orElseThrow();
-        DiffLine anadida = historial.lines().stream()
+        DiffLine added = diff.file("src/components/OrderHistory.tsx").orElseThrow().lines().stream()
                 .filter(l -> l.side() == DiffSide.ADDED)
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(anadida.lineNumber()).isEqualTo(32);
-        assertThat(anadida.content()).contains("Total estimado:");
+        assertThat(added.lineNumber()).isEqualTo(32);
+        assertThat(added.content()).contains("Estimated total:");
     }
 
     @Test
-    @DisplayName("el diff corregido solo toca el resumen del carrito")
-    void elDiffCorregidoSoloTocaElCarrito() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.fixedDiff());
+    @DisplayName("the fixed diff only touches the cart summary")
+    void fixedDiffTouchesOnlyTheCart() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffFixed());
 
         assertThat(diff.files()).extracting(DiffFile::path).containsExactly("src/components/CartSummary.tsx");
     }
 
     @Test
-    @DisplayName("admite varios fragmentos dentro del mismo archivo")
-    void admiteVariosFragmentos() {
+    @DisplayName("handles several hunks in the same file")
+    void handlesSeveralHunks() {
         String raw = """
                 --- a/app.ts
                 +++ b/app.ts
                 @@ -1,2 +1,2 @@
-                 uno
-                -dos
-                +DOS
+                 one
+                -two
+                +TWO
                 @@ -20,2 +20,3 @@
-                 veinte
-                +nuevo
-                 veintiuno
+                 twenty
+                +new
+                 twentyone
                 """;
 
         ParsedDiff diff = parser.parse(raw);
@@ -111,22 +107,22 @@ class DiffParserTest {
     }
 
     @Test
-    @DisplayName("rechaza un texto que no es un diff unificado")
-    void rechazaTextoQueNoEsDiff() {
-        assertThatThrownBy(() -> parser.parse("esto no es un diff\nsolo texto suelto"))
+    @DisplayName("rejects text that is not a unified diff")
+    void rejectsTextThatIsNotADiff() {
+        assertThatThrownBy(() -> parser.parse("this is not a diff\njust loose text"))
                 .isInstanceOf(InvalidDiffException.class);
     }
 
     @Test
-    @DisplayName("el texto anotado lleva archivo, lado y número de línea")
-    void textoAnotado() {
-        ParsedDiff diff = parser.parse(ExampleFixtures.fixedDiff());
+    @DisplayName("the annotated text carries file, side and line number")
+    void annotatedText() {
+        ParsedDiff diff = parser.parse(ExampleFixtures.diffFixed());
 
-        String anotado = diff.toAnnotatedText();
+        String annotated = diff.toAnnotatedText();
 
-        assertThat(anotado).contains("ARCHIVO: src/components/CartSummary.tsx");
-        assertThat(anotado).contains("[ADDED 20]");
-        assertThat(anotado).contains("[REMOVED 20]");
-        assertThat(anotado).contains("[CONTEXT 18]");
+        assertThat(annotated).contains("FILE: src/components/CartSummary.tsx");
+        assertThat(annotated).contains("[ADDED 20]");
+        assertThat(annotated).contains("[REMOVED 20]");
+        assertThat(annotated).contains("[CONTEXT 18]");
     }
 }

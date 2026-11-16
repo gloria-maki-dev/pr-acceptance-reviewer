@@ -1,13 +1,12 @@
-# Ejemplos de la demo
+# Demo examples
 
-Ticket ficticio **TIENDA-412 — Aclarar el importe del carrito**, de una tienda online.
+Fictional ticket **SHOP-412 — Clarify the cart amount**, from an online store.
 
-Estos tres archivos son la única fuente de los ejemplos: el frontend los importa con
-`?raw` y las pruebas del backend los leen desde disco, así que la demo de la pantalla
-y la de las pruebas no pueden desincronizarse.
+These three files are the single source of the examples: the web demo imports them with `?raw`
+and the backend tests read them from disk, so the screen and the tests cannot drift apart.
 
-| Archivo | Qué contiene |
+| File | What it holds |
 |---|---|
-| `criterios.txt` | Los dos criterios de aceptación del ticket, uno por línea. |
-| `diff-con-fallo.diff` | Cambia «Total» en `CartSummary.tsx` **y también** en `OrderHistory.tsx`. Resultado esperado: criterio 1 **Cumplido**, criterio 2 **No cumplido** citando `OrderHistory.tsx`. |
-| `diff-corregido.diff` | Cambia «Total» solo en `CartSummary.tsx`. Resultado esperado: ambos criterios **Cumplidos**. |
+| `acceptance-criteria.txt` | The ticket's two acceptance criteria, one per line. |
+| `diff-with-bug.diff` | Changes "Total" in `CartSummary.tsx` **and also** in `OrderHistory.tsx`. Expected result: criterion 1 **Met**, criterion 2 **Not met**, citing `OrderHistory.tsx`. |
+| `diff-fixed.diff` | Changes "Total" in `CartSummary.tsx` only. Expected result: both criteria **Met**. |

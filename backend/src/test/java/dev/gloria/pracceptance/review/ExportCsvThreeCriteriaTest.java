@@ -14,64 +14,64 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tres criterios, tres estados, y lo que pasa cuando el modelo se deja uno.
+ * Three criteria, three verdicts, and what happens when the model leaves one out.
  *
- * <p>Antes, un veredicto de menos tiraba la revisión entera con «el modelo devolvió 2 veredictos
- * y se esperaban 3». Ahora cada criterio tiene su identificador y su resultado, pase lo que pase
- * con los demás.
+ * <p>A missing verdict used to sink the whole review with "the model returned 2 verdicts and 3
+ * were expected". Now every criterion has its own identifier and its own result, whatever
+ * happens to the others.
  */
 class ExportCsvThreeCriteriaTest {
 
-    private static final List<String> CRITERIOS = List.of(
-            "La constante exportButtonLabel debe tener el valor «Descargar CSV».",
-            "El separador del CSV debe seguir siendo el punto y coma.",
-            "El endpoint de exportación debe exigir autenticación.");
+    private static final List<String> CRITERIA = List.of(
+            "The exportButtonLabel constant must have the value “Download CSV”.",
+            "The CSV separator must still be the semicolon.",
+            "The export endpoint must require authentication.");
 
-    private static final String DIFF_CSV =
+    private static final String CSV_DIFF =
             """
             diff --git a/src/orders/exportCsv.ts b/src/orders/exportCsv.ts
             --- a/src/orders/exportCsv.ts
             +++ b/src/orders/exportCsv.ts
             @@ -1,5 +1,5 @@
-            -export const exportButtonLabel = 'Exportar';
-            -const SEPARATOR = ';';
-            +export const exportButtonLabel = 'Descargar CSV';
-            +const SEPARATOR = ',';
+            -export const exportButtonLabel = 'Export';
+            -const separator = ';';
+            +export const exportButtonLabel = 'Download CSV';
+            +const separator = ',';
 
              export function exportCsv(orders: Order[]): string {
-               const header = ['id', 'cliente', 'total'].join(SEPARATOR);
+               const header = ['id', 'customer', 'total'].join(separator);
             """;
 
-    /** Respuesta completa: un veredicto por criterio, con los tres estados. */
-    private static final String RESPUESTA_COMPLETA =
+    /** A complete answer: one verdict per criterion, covering all three statuses. */
+    private static final String COMPLETE_ANSWER =
             """
             {"results":[
               {"criterionId":"C1","status":"MET",
-               "explanation":"exportButtonLabel pasa a valer «Descargar CSV».",
+               "explanation":"exportButtonLabel now reads \\"Download CSV\\".",
                "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":1,
-                           "snippet":"export const exportButtonLabel = 'Descargar CSV';"}},
+                           "snippet":"export const exportButtonLabel = 'Download CSV';"}},
               {"criterionId":"C2","status":"NOT_MET",
-               "explanation":"El separador pasa de punto y coma a coma.",
+               "explanation":"The separator changes from a semicolon to a comma.",
                "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":2,
-                           "snippet":"const SEPARATOR = ','"}},
-              {"criterionId":"C3","status":"UNVERIFIED",
-               "explanation":"El diff no contiene el endpoint de exportación, así que no se ve su autenticación.",
+                           "snippet":"const separator = ','"}},
+              {"criterionId":"C3","status":"NOT_VERIFIED",
+               "explanation":"The diff does not contain the export endpoint, so its auth is not visible.",
                "evidence":null}
             ]}
             """;
 
-    /** Respuesta a medias: el modelo se deja el tercer criterio. */
-    private static final String RESPUESTA_PARCIAL =
+    /** A half-answer: the model leaves the third criterion out. */
+    private static final String PARTIAL_ANSWER =
             """
             {"results":[
               {"criterionId":"C1","status":"MET",
-               "explanation":"exportButtonLabel pasa a valer «Descargar CSV».",
+               "explanation":"exportButtonLabel now reads \\"Download CSV\\".",
                "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":1,
-                           "snippet":"exportButtonLabel = 'Descargar CSV'"}},
+                           "snippet":"exportButtonLabel = 'Download CSV'"}},
               {"criterionId":"C2","status":"NOT_MET",
-               "explanation":"El separador pasa de punto y coma a coma.",
+               "explanation":"The separator changes from a semicolon to a comma.",
                "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":2,
-                           "snippet":"const SEPARATOR = ','"}}
+                           "snippet":"const separator = ','"}}
             ]}
             """;
 
@@ -84,7 +84,7 @@ class ExportCsvThreeCriteriaTest {
 
             @Override
             public String modelName() {
-                return "modelo-de-prueba";
+                return "test-model";
             }
         };
         return new ReviewService(
@@ -92,103 +92,104 @@ class ExportCsvThreeCriteriaTest {
     }
 
     @Test
-    @DisplayName("el caso CSV devuelve los tres estados, cada uno con su evidencia comprobada")
-    void tresCriteriosTresEstados() {
-        ReviewResult result = serviceWith(RESPUESTA_COMPLETA).review(CRITERIOS, DIFF_CSV);
+    @DisplayName("the CSV case returns all three verdicts, each with its citation checked")
+    void threeCriteriaThreeVerdicts() {
+        ReviewResult result = serviceWith(COMPLETE_ANSWER).review(CRITERIA, CSV_DIFF);
 
         assertThat(result.results()).hasSize(3);
-        assertThat(result.results()).extracting(CriterionResult::status)
-                .containsExactly(ReviewStatus.MET, ReviewStatus.NOT_MET, ReviewStatus.UNVERIFIED);
+        assertThat(result.results())
+                .extracting(CriterionResult::status)
+                .containsExactly(ReviewStatus.MET, ReviewStatus.NOT_MET, ReviewStatus.NOT_VERIFIED);
 
-        CriterionResult etiqueta = result.results().get(0);
-        assertThat(etiqueta.evidence().file()).isEqualTo("src/orders/exportCsv.ts");
-        assertThat(etiqueta.evidence().lineNumber()).isEqualTo(1);
-        assertThat(etiqueta.evidence().side()).isEqualTo(DiffSide.ADDED);
-        assertThat(etiqueta.verificationNote()).isNull();
+        CriterionResult label = result.results().get(0);
+        assertThat(label.evidence().file()).isEqualTo("src/orders/exportCsv.ts");
+        assertThat(label.evidence().lineNumber()).isEqualTo(1);
+        assertThat(label.evidence().side()).isEqualTo(DiffSide.ADDED);
+        assertThat(label.verificationNote()).isNull();
 
-        CriterionResult separador = result.results().get(1);
-        assertThat(separador.evidence().file()).isEqualTo("src/orders/exportCsv.ts");
-        assertThat(separador.evidence().lineNumber()).isEqualTo(2);
-        assertThat(separador.verificationNote()).isNull();
+        CriterionResult separator = result.results().get(1);
+        assertThat(separator.evidence().file()).isEqualTo("src/orders/exportCsv.ts");
+        assertThat(separator.evidence().lineNumber()).isEqualTo(2);
+        assertThat(separator.evidence().snippet()).isEqualTo("const separator = ','");
+        assertThat(separator.verificationNote()).isNull();
 
-        CriterionResult autenticacion = result.results().get(2);
-        assertThat(autenticacion.evidence()).isNull();
-        assertThat(autenticacion.verificationNote()).isNull();
-        assertThat(autenticacion.explanation()).contains("endpoint");
+        CriterionResult auth = result.results().get(2);
+        assertThat(auth.evidence()).isNull();
+        assertThat(auth.verificationNote()).isNull();
+        assertThat(auth.explanation()).contains("endpoint");
     }
 
     @Test
-    @DisplayName("una respuesta con solo dos veredictos conserva los dos y no bloquea la revisión")
-    void respuestaParcialNoBloqueaLaRevision() {
-        ReviewResult result = serviceWith(RESPUESTA_PARCIAL).review(CRITERIOS, DIFF_CSV);
+    @DisplayName("an answer with only two verdicts keeps both and does not block the review")
+    void partialAnswerDoesNotBlockTheReview() {
+        ReviewResult result = serviceWith(PARTIAL_ANSWER).review(CRITERIA, CSV_DIFF);
 
         assertThat(result.results()).hasSize(3);
-
         assertThat(result.results().get(0).status()).isEqualTo(ReviewStatus.MET);
         assertThat(result.results().get(0).evidence().file()).isEqualTo("src/orders/exportCsv.ts");
         assertThat(result.results().get(1).status()).isEqualTo(ReviewStatus.NOT_MET);
 
-        CriterionResult omitido = result.results().get(2);
-        assertThat(omitido.criterion()).isEqualTo(CRITERIOS.get(2));
-        assertThat(omitido.status()).isEqualTo(ReviewStatus.UNVERIFIED);
-        assertThat(omitido.evidence()).isNull();
-        assertThat(omitido.explanation()).isNull();
-        assertThat(omitido.verificationNote()).isEqualTo(
-                "El modelo no evaluó este criterio: no devolvió ningún veredicto para él.");
+        CriterionResult skipped = result.results().get(2);
+        assertThat(skipped.criterion()).isEqualTo(CRITERIA.get(2));
+        assertThat(skipped.status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
+        assertThat(skipped.evidence()).isNull();
+        assertThat(skipped.explanation()).isNull();
+        assertThat(skipped.verificationNote())
+                .isEqualTo("The model did not evaluate this criterion: it returned no verdict for it.");
     }
 
     @Test
-    @DisplayName("una cita a un archivo que no está en este diff se rechaza, y los demás siguen")
-    void citaAjenaAlDiffDeEstaPeticion() {
-        String respuesta =
+    @DisplayName("a citation to a file outside this diff is rejected, and the rest carry on")
+    void citationOutsideThisRequestsDiff() {
+        String answer =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Del carrito.",
+                  {"criterionId":"C1","status":"MET","explanation":"From the cart.",
                    "evidence":{"file":"src/components/CartSummary.tsx","side":"ADDED","lineNumber":20,
-                               "snippet":"Total estimado"}},
-                  {"criterionId":"C2","status":"NOT_MET","explanation":"Separador cambiado.",
+                               "snippet":"Estimated total"}},
+                  {"criterionId":"C2","status":"NOT_MET","explanation":"Separator changed.",
                    "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":2,
-                               "snippet":"const SEPARATOR = ','"}},
-                  {"criterionId":"C3","status":"UNVERIFIED","explanation":"No se ve.","evidence":null}
+                               "snippet":"const separator = ','"}},
+                  {"criterionId":"C3","status":"NOT_VERIFIED","explanation":"Not visible.","evidence":null}
                 ]}
                 """;
 
-        ReviewResult result = serviceWith(respuesta).review(CRITERIOS, DIFF_CSV);
+        ReviewResult result = serviceWith(answer).review(CRITERIA, CSV_DIFF);
 
-        assertThat(result.results().get(0).status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.results().get(0).status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
         assertThat(result.results().get(0).verificationNote()).contains("CartSummary.tsx");
         assertThat(result.results().get(1).status()).isEqualTo(ReviewStatus.NOT_MET);
-        assertThat(result.results().get(2).status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.results().get(2).status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
     }
 
     @Test
-    @DisplayName("un veredicto mal formado deja ese criterio sin comprobar y explica por qué")
-    void veredictoMalFormado() {
-        String respuesta =
+    @DisplayName("a malformed verdict leaves its criterion unchecked and says why")
+    void malformedVerdict() {
+        String answer =
                 """
                 {"results":[
-                  {"criterionId":"C1","status":"MET","explanation":"Etiqueta cambiada.",
+                  {"criterionId":"C1","status":"MET","explanation":"Label changed.",
                    "evidence":{"file":"src/orders/exportCsv.ts","side":"ADDED","lineNumber":1,
-                               "snippet":"exportButtonLabel = 'Descargar CSV'"}},
-                  {"criterionId":"C2","status":"ME_LO_INVENTO","explanation":"Vete a saber."},
-                  {"criterionId":"C3","status":"UNVERIFIED","explanation":"No se ve.","evidence":null}
+                               "snippet":"exportButtonLabel = 'Download CSV'"}},
+                  {"criterionId":"C2","status":"I_MADE_IT_UP","explanation":"Who knows."},
+                  {"criterionId":"C3","status":"NOT_VERIFIED","explanation":"Not visible.","evidence":null}
                 ]}
                 """;
 
-        ReviewResult result = serviceWith(respuesta).review(CRITERIOS, DIFF_CSV);
+        ReviewResult result = serviceWith(answer).review(CRITERIA, CSV_DIFF);
 
         assertThat(result.results().get(0).status()).isEqualTo(ReviewStatus.MET);
-        assertThat(result.results().get(1).status()).isEqualTo(ReviewStatus.UNVERIFIED);
-        assertThat(result.results().get(1).verificationNote()).contains("ME_LO_INVENTO");
-        assertThat(result.results().get(2).status()).isEqualTo(ReviewStatus.UNVERIFIED);
+        assertThat(result.results().get(1).status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
+        assertThat(result.results().get(1).verificationNote()).contains("I_MADE_IT_UP");
+        assertThat(result.results().get(2).status()).isEqualTo(ReviewStatus.NOT_VERIFIED);
     }
 
     @Test
-    @DisplayName("si no queda ni un veredicto en pie, sigue siendo un error del modelo")
-    void ningunVeredictoEnPie() {
-        ReviewService service = serviceWith("Pues no sé qué decirte de este diff.");
+    @DisplayName("with no verdict left standing it is still a model error")
+    void noVerdictLeftStanding() {
+        ReviewService service = serviceWith("I am not sure what to tell you about this diff.");
 
-        assertThatThrownBy(() -> service.review(CRITERIOS, DIFF_CSV))
+        assertThatThrownBy(() -> service.review(CRITERIA, CSV_DIFF))
                 .isInstanceOf(ModelResponseException.class);
     }
 }

@@ -1,15 +1,14 @@
 package dev.gloria.pracceptance.review;
 
-/** Veredicto de un criterio de aceptación. */
+/** The verdict on one acceptance criterion. */
 public enum ReviewStatus {
-    /** Cumplido: el diff lo cumple y la cita que lo respalda está verificada. */
+    /** Met: the diff satisfies it, and the citation backing that is verified. */
     MET,
-    /** No cumplido: el diff lo incumple y la cita que lo demuestra está verificada. */
+    /** Not met: the diff violates it, and the citation proving that is verified. */
     NOT_MET,
     /**
-     * No verificado: el diff no da contexto suficiente, o la cita del modelo no se corresponde con
-     * ninguna línea del diff. Es el estado al que se degrada cualquier veredicto que no se pueda
-     * comprobar.
+     * Not verified: the diff gives too little context, or the model's citation matches no line of
+     * the diff. Any verdict that cannot be checked ends up here.
      */
-    UNVERIFIED
+    NOT_VERIFIED
 }

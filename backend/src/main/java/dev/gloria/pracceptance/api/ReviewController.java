@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** El único endpoint de la aplicación. */
+/** The application's only endpoint. */
 @RestController
 @RequestMapping("/api/reviews")
 public class ReviewController {

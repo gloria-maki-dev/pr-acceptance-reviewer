@@ -3,11 +3,11 @@ import { EvidenceLine } from './EvidenceLine';
 import { StatusChip } from './StatusChip';
 
 /**
- * Un criterio con su veredicto y, si se sostiene, su evidencia.
+ * One criterion with its verdict and, when it holds up, its evidence.
  *
- * <p>Cuando el backend rechaza la cita, aquí NO se enseña ni la cita ni la explicación del
- * modelo. La explicación describía una línea que no está en este diff: dejarla a la vista, aunque
- * sea con la etiqueta «No verificado» al lado, es justo lo que hace que alguien se la crea.
+ * When the backend rejects the citation, neither the citation nor the model's explanation is
+ * shown here. The explanation described a line that is not in this diff: leaving it on screen,
+ * even with a "Not verified" label beside it, is exactly what makes someone believe it.
  */
 export function ResultCard({ result, index }: { result: CriterionResult; index: number }) {
   const citationRejected = result.verificationNote !== null;
@@ -24,10 +24,10 @@ export function ResultCard({ result, index }: { result: CriterionResult; index: 
 
       {citationRejected ? (
         <p className="result__note">
-          <strong>{result.explanation === null ? 'Sin comprobar.' : 'Sin evidencia que lo sostenga.'}</strong>{' '}
+          <strong>{result.explanation === null ? 'Not checked.' : 'No evidence to back it.'}</strong>{' '}
           {result.verificationNote}
           {result.explanation !== null &&
-            ' No se muestran ni la cita ni la explicación del modelo, porque se apoyaban en ella.'}
+            ' The citation and the model’s explanation are hidden, because they rested on it.'}
         </p>
       ) : (
         <>
@@ -35,7 +35,7 @@ export function ResultCard({ result, index }: { result: CriterionResult; index: 
           {result.evidence ? (
             <EvidenceLine evidence={result.evidence} />
           ) : (
-            <p className="result__no-evidence">El modelo no citó ninguna línea del diff.</p>
+            <p className="result__no-evidence">The model cited no line of the diff.</p>
           )}
         </>
       )}

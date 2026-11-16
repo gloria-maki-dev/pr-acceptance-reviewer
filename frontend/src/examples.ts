@@ -1,16 +1,16 @@
-import criteriosRaw from '../../examples/criterios.txt?raw';
-import diffConFallo from '../../examples/diff-con-fallo.diff?raw';
-import diffCorregido from '../../examples/diff-corregido.diff?raw';
+import criteriaRaw from '../../examples/acceptance-criteria.txt?raw';
+import diffWithBug from '../../examples/diff-with-bug.diff?raw';
+import diffFixed from '../../examples/diff-fixed.diff?raw';
 
 /**
- * El ticket de la demo. Los archivos viven en examples/, en la raíz del repositorio, y son los
- * mismos que usan las pruebas del backend.
+ * The demo ticket. The files live in examples/, at the repository root, and are the same ones
+ * the backend tests read.
  */
 export const TICKET = {
-  id: 'TIENDA-412',
-  title: 'Aclarar el importe del carrito',
-  criteria: criteriosRaw.trim(),
+  id: 'SHOP-412',
+  title: 'Clarify the cart amount',
+  criteria: criteriaRaw.trim(),
 };
 
-export const DIFF_CON_FALLO = diffConFallo.trimEnd();
-export const DIFF_CORREGIDO = diffCorregido.trimEnd();
+export const DIFF_WITH_BUG = diffWithBug.trimEnd();
+export const DIFF_FIXED = diffFixed.trimEnd();
