@@ -1,0 +1,12 @@
+diff --git a/src/components/CartSummary.tsx b/src/components/CartSummary.tsx
+index 3a1f2c4..9b7e5d1 100644
+--- a/src/components/CartSummary.tsx
++++ b/src/components/CartSummary.tsx
+@@ -18,6 +18,6 @@ export function CartSummary({ items, shipping }: CartSummaryProps) {
+       </ul>
+       <footer className="cart-summary__footer">
+-        <span className="cart-summary__label">Total</span>
++        <span className="cart-summary__label">Total estimado</span>
+         <span className="cart-summary__amount">{formatPrice(total)}</span>
+       </footer>
+     </section>

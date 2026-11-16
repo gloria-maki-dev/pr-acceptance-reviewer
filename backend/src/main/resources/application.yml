@@ -1,0 +1,16 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: pr-acceptance-reviewer
+
+reviewer:
+  # Modelo que revisa. Ver https://platform.claude.com/docs para la lista de modelos.
+  model: ${REVIEWER_MODEL:claude-opus-5-5}
+  # Tope de tokens de la respuesta del modelo.
+  max-tokens: ${REVIEWER_MAX_TOKENS:16000}
+
+logging:
+  level:
+    dev.gloria.pracceptance: INFO

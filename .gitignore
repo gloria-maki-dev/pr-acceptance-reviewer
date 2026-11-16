@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Artefactos de compilación
+target/
+dist/
+*.tsbuildinfo
+
+# Secretos — nunca al repositorio
+.env
+.env.*
+!.env.example
+
+# Herramientas locales de desarrollo (no forman parte del proyecto)
+.superpowers/
+.specify/
+.claude/
+docs/superpowers/
+
+# Sistema operativo y editores
+.DS_Store
+.idea/
+.vscode/
